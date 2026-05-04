@@ -61,28 +61,28 @@ export function Settings({ onClose }: Props) {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-[var(--color-ink-0)] text-white max-w-md mx-auto">
-      <div className="sticky top-0 z-10 bg-[var(--color-ink-0)]/85 backdrop-blur-xl border-b border-white/5">
+    <div className="flex flex-col min-h-screen bg-[var(--color-void-0)] text-[#C0D0F0] max-w-md mx-auto">
+      <div className="sticky top-0 z-10 bg-[var(--color-void-0)]/85 backdrop-blur-xl border-b border-white/[0.05]">
         <div className="flex items-center p-4">
           <button
             onClick={onClose}
             aria-label="Retour"
-            className="relative z-10 p-2 -ml-2 text-zinc-400 active:text-white shrink-0"
+            className="relative z-10 p-2 -ml-2 text-slate-400 active:text-white shrink-0"
           >
             <ChevronLeft className="w-7 h-7" />
           </button>
-          <h1 className="flex-1 text-center font-display font-bold text-xs tracking-[0.3em] text-zinc-400 uppercase pointer-events-none">Réglages</h1>
+          <h1 className="flex-1 text-center text-[10px] font-bold tracking-[0.3em] text-slate-500 uppercase pointer-events-none">Réglages</h1>
           <div className="w-11 shrink-0" />
         </div>
       </div>
 
       <div className="flex-1 px-4 py-5 space-y-6 pb-12">
         {/* Stats summary */}
-        <div className="rounded-2xl bg-gradient-to-br from-[var(--color-ink-1)] to-[var(--color-ink-2)] border border-white/5 p-5">
-          <div className="flex items-center gap-2 text-[10px] tracking-[0.3em] uppercase font-bold text-zinc-500 mb-3">
+        <div className="rounded-2xl bg-[var(--color-void-1)] border border-white/[0.05] p-5">
+          <div className="flex items-center gap-2 text-[10px] tracking-[0.25em] uppercase font-bold text-slate-500 mb-4">
             <Database className="w-3.5 h-3.5" /> Données locales
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-4">
             <Stat label="Séances" value={stats.sessions} />
             <Stat label="Check-ins" value={stats.checkins} />
           </div>
@@ -90,16 +90,18 @@ export function Settings({ onClose }: Props) {
 
         {/* Default rest */}
         <Section title="Repos par défaut">
-          <div className="flex items-center gap-3">
-            <input
-              type="range" min={30} max={300} step={15}
-              value={settings.defaultRest}
-              onChange={e => update({ defaultRest: Number(e.target.value) })}
-              className="flex-1 accent-emerald-400"
-            />
-            <div className="w-20 text-right font-mono tnum font-bold text-base">{settings.defaultRest}s</div>
+          <div className="p-4 rounded-xl bg-[var(--color-void-1)] border border-white/[0.05]">
+            <div className="flex items-center gap-3 mb-3">
+              <input
+                type="range" min={30} max={300} step={15}
+                value={settings.defaultRest}
+                onChange={e => update({ defaultRest: Number(e.target.value) })}
+                className="flex-1 accent-[#0DDFB8]"
+              />
+              <div className="w-14 text-right font-mono tnum font-bold text-base text-[#C0D0F0]">{settings.defaultRest}s</div>
+            </div>
+            <p className="text-xs text-slate-600">Utilisé pour les exercices sans repos défini.</p>
           </div>
-          <p className="text-xs text-zinc-500 mt-2">Utilisé pour les exercices sans repos défini.</p>
         </Section>
 
         {/* Sound + vibrate */}
@@ -144,17 +146,17 @@ export function Settings({ onClose }: Props) {
           />
           <button
             onClick={() => fileRef.current?.click()}
-            className="w-full flex items-center gap-3 p-4 rounded-xl bg-[var(--color-ink-2)] border border-white/10 active:scale-[0.99] transition mt-2"
+            className="w-full flex items-center gap-3 p-4 rounded-xl bg-[var(--color-void-2)] border border-white/[0.08] active:scale-[0.99] transition mt-2"
           >
-            <Upload className="w-5 h-5 text-emerald-400" />
+            <Upload className="w-5 h-5 text-[var(--color-signal)]" />
             <div className="text-left flex-1">
               <div className="text-sm font-bold">Importer un JSON</div>
-              <div className="text-[11px] text-zinc-500">Fusion avec les données existantes.</div>
+              <div className="text-[11px] text-slate-500">Fusion avec les données existantes.</div>
             </div>
           </button>
 
-          <p className="text-[11px] text-zinc-500 mt-3 flex items-start gap-2">
-            <Shield className="w-3 h-3 mt-0.5 text-zinc-600 shrink-0" />
+          <p className="text-[11px] text-slate-600 mt-3 flex items-start gap-2">
+            <Shield className="w-3 h-3 mt-0.5 text-slate-700 shrink-0" />
             Tes données restent stockées sur cet appareil. L'export te sert de filet en cas de changement de téléphone ou de cache navigateur effacé.
           </p>
         </Section>
@@ -176,7 +178,8 @@ export function Settings({ onClose }: Props) {
 
       {feedback && (
         <div className="fixed bottom-6 left-4 right-4 max-w-md mx-auto z-30">
-          <div className="bg-emerald-400 text-black font-bold text-sm px-4 py-3 rounded-xl shadow-lg text-center">
+          <div className="text-black font-bold text-sm px-4 py-3 rounded-xl shadow-lg text-center"
+            style={{ background: 'var(--color-signal)', boxShadow: '0 8px 24px rgba(13,223,184,0.3)' }}>
             {feedback}
           </div>
         </div>
@@ -188,7 +191,7 @@ export function Settings({ onClose }: Props) {
 function Section({ title, tone, children }: { title: string; tone?: "danger"; children: ReactNode }) {
   return (
     <div>
-      <div className={`text-[10px] tracking-[0.3em] uppercase font-bold mb-3 px-1 ${tone === "danger" ? "text-red-400" : "text-zinc-500"}`}>{title}</div>
+      <div className={`text-[10px] tracking-[0.25em] uppercase font-bold mb-3 px-1 ${tone === "danger" ? "text-red-400" : "text-slate-500"}`}>{title}</div>
       <div className="space-y-2">{children}</div>
     </div>
   );
@@ -197,8 +200,8 @@ function Section({ title, tone, children }: { title: string; tone?: "danger"; ch
 function Stat({ label, value }: { label: string; value: number }) {
   return (
     <div>
-      <div className="text-[10px] uppercase tracking-[0.2em] text-zinc-500 mb-1">{label}</div>
-      <div className="font-display font-bold text-3xl tnum">{value}</div>
+      <div className="text-[10px] uppercase tracking-[0.18em] text-slate-600 mb-1">{label}</div>
+      <div className="font-display font-black tnum text-[#C0D0F0]" style={{ fontSize: '40px', lineHeight: 1 }}>{value}</div>
     </div>
   );
 }
@@ -207,14 +210,16 @@ function Toggle({ icon, label, active, onChange }: { icon: ReactNode; label: str
   return (
     <button
       onClick={() => onChange(!active)}
-      className="w-full flex items-center gap-3 p-3.5 rounded-xl bg-[var(--color-ink-2)] border border-white/5 active:scale-[0.99] transition"
+      className="w-full flex items-center gap-3 p-3.5 rounded-xl bg-[var(--color-void-1)] border border-white/[0.05] active:scale-[0.99] transition"
     >
-      <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${active ? "bg-emerald-400/15 text-emerald-300" : "bg-white/5 text-zinc-500"}`}>
+      <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${
+        active ? "bg-[var(--color-signal)]/15 text-[var(--color-signal)]" : "bg-white/[0.05] text-slate-500"
+      }`}>
         {icon}
       </div>
-      <div className="text-sm font-bold flex-1 text-left">{label}</div>
-      <div className={`w-11 h-6 rounded-full p-0.5 transition-colors ${active ? "bg-emerald-400" : "bg-white/10"}`}>
-        <div className={`w-5 h-5 rounded-full bg-white transition-transform ${active ? "translate-x-5" : "translate-x-0"}`} />
+      <div className="text-sm font-bold flex-1 text-left text-[#C0D0F0]">{label}</div>
+      <div className={`w-11 h-6 rounded-full p-0.5 transition-colors ${active ? "bg-[var(--color-signal)]" : "bg-white/[0.1]"}`}>
+        <div className={`w-5 h-5 rounded-full bg-white transition-transform shadow-sm ${active ? "translate-x-5" : "translate-x-0"}`} />
       </div>
     </button>
   );

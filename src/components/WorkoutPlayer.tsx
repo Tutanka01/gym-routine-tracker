@@ -47,12 +47,12 @@ function StepperInput({
 
   return (
     <div className={`flex items-center h-11 rounded-xl overflow-hidden shrink-0 transition-colors ${
-      isComplete ? "bg-success-soft" : "bg-[var(--color-ink-3)]"
+      isComplete ? "bg-signal-soft" : "bg-[var(--color-void-3)]"
     }`}>
       <button
         type="button"
         onPointerDown={e => { e.preventDefault(); dec(); }}
-        className={`${btnCls} h-full flex items-center justify-center text-zinc-500 text-sm active:bg-white/[0.06] transition`}
+        className={`${btnCls} h-full flex items-center justify-center text-slate-500 text-sm active:bg-white/[0.06] transition`}
       >−</button>
       <input
         type="number"
@@ -61,14 +61,14 @@ function StepperInput({
         onChange={e => onChange(e.target.value)}
         onBlur={onBlur}
         placeholder={placeholder}
-        className={`${inputCls} h-full text-center font-mono tnum text-sm font-bold bg-transparent outline-none transition placeholder-zinc-700 ${
-          isComplete ? "text-success" : "text-[#EDE8E0]"
+        className={`${inputCls} h-full text-center font-mono tnum text-sm font-bold bg-transparent outline-none transition placeholder-slate-700 ${
+          isComplete ? "text-[var(--color-signal)]" : "text-[#C0D0F0]"
         }`}
       />
       <button
         type="button"
         onPointerDown={e => { e.preventDefault(); inc(); }}
-        className={`${btnCls} h-full flex items-center justify-center text-zinc-500 text-sm active:bg-white/[0.06] transition`}
+        className={`${btnCls} h-full flex items-center justify-center text-slate-500 text-sm active:bg-white/[0.06] transition`}
       >+</button>
     </div>
   );
@@ -101,7 +101,6 @@ export function WorkoutPlayer({ workout, onClose, resumeFromActive }: WorkoutPla
   const settings = useMemo(() => storage.getSettings(), []);
   const allSessions = useMemo(() => storage.getSessions(), []);
 
-  // Keep a ref to latest sessionLogs for use in setTimeout callbacks
   const sessionLogsRef = useRef(sessionLogs);
   useEffect(() => { sessionLogsRef.current = sessionLogs; }, [sessionLogs]);
 
@@ -175,7 +174,6 @@ export function WorkoutPlayer({ workout, onClose, resumeFromActive }: WorkoutPla
     });
   };
 
-  // Auto-complete when both weight + reps are filled; defer to let React flush onChange state
   const handleSetBlur = (exerciseId: string, setIndex: number) => {
     setTimeout(() => {
       const set = sessionLogsRef.current[exerciseId]?.sets[setIndex];
@@ -207,7 +205,6 @@ export function WorkoutPlayer({ workout, onClose, resumeFromActive }: WorkoutPla
 
       if (becomingComplete) {
         set.ts = Date.now();
-        // PR: compare against historical sets + already-done sets this session
         const pastHistory = exerciseHistorySets(allSessions, exerciseId);
         const currentSets: SetData[] = prev[exerciseId].sets
           .filter((s, i) => i !== setIndex && s.isComplete && Number(s.weight) > 0)
@@ -259,7 +256,6 @@ export function WorkoutPlayer({ workout, onClose, resumeFromActive }: WorkoutPla
       <div className="space-y-2 mt-5">
         {logs.map((set, idx) => {
           const pastSet = pastLogs[idx];
-          // PR display check: include current session's other completed sets
           const currentSets: SetData[] = logs
             .filter((s, i) => i !== idx && s.isComplete && Number(s.weight) > 0)
             .map(s => ({ weight: s.weight, reps: s.reps, isComplete: true as const }));
@@ -274,22 +270,20 @@ export function WorkoutPlayer({ workout, onClose, resumeFromActive }: WorkoutPla
             <motion.div
               key={idx}
               layout
-              className={`flex items-center gap-2 px-2 py-1.5 rounded-2xl transition-colors ${
+              className={`flex items-center gap-2 px-2 py-1.5 rounded-xl transition-colors ${
                 set.isComplete
                   ? isPR
-                    ? "bg-[var(--color-acid)]/10 border border-[var(--color-acid)]/25"
-                    : "bg-success-soft border border-success-soft"
-                  : "bg-[var(--color-ink-2)] border border-white/[0.04]"
+                    ? "bg-acid-soft border border-[var(--color-acid)]/25"
+                    : "bg-signal-soft border border-signal-soft"
+                  : "bg-[var(--color-void-2)] border border-white/[0.05]"
               } ${flashing ? "pr-flash" : ""}`}
             >
-              {/* Set number */}
               <span className={`w-5 text-center text-xs font-mono font-bold shrink-0 ${
-                set.isComplete ? "text-success" : "text-zinc-600"
+                set.isComplete ? (isPR ? "text-[var(--color-acid)]" : "text-[var(--color-signal)]") : "text-slate-600"
               }`}>
                 {idx + 1}
               </span>
 
-              {/* Weight stepper */}
               <StepperInput
                 value={set.weight}
                 onChange={v => updateSet(currentExercise.id, idx, 'weight', v)}
@@ -301,9 +295,8 @@ export function WorkoutPlayer({ workout, onClose, resumeFromActive }: WorkoutPla
                 btnCls="w-7"
               />
 
-              <span className="text-zinc-700 text-xs font-bold shrink-0">×</span>
+              <span className="text-slate-700 text-xs font-bold shrink-0">×</span>
 
-              {/* Reps stepper */}
               <StepperInput
                 value={set.reps}
                 onChange={v => updateSet(currentExercise.id, idx, 'reps', v)}
@@ -315,23 +308,21 @@ export function WorkoutPlayer({ workout, onClose, resumeFromActive }: WorkoutPla
                 btnCls="w-6"
               />
 
-              {/* Previous reference */}
               {pastSet?.weight && (
-                <span className="flex-1 text-[10px] font-mono text-zinc-600 text-right pr-1 min-w-0 truncate">
+                <span className="flex-1 text-[10px] font-mono text-slate-700 text-right pr-1 min-w-0 truncate">
                   {pastSet.weight}×{pastSet.reps}
                 </span>
               )}
               {!pastSet?.weight && <div className="flex-1" />}
 
-              {/* Check button */}
               <button
                 onClick={() => toggleSetComplete(currentExercise.id, idx)}
                 className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all active:scale-95 shrink-0 ${
                   set.isComplete
                     ? isPR
-                      ? "bg-[var(--color-acid)] text-black shadow-md shadow-[var(--color-acid)]/20"
-                      : "bg-[var(--color-success)] text-white shadow-md shadow-[var(--color-success)]/20"
-                    : "bg-[var(--color-ink-3)] text-zinc-600 active:bg-[var(--color-ink-4)]"
+                      ? "bg-[var(--color-acid)] text-black shadow-md shadow-[var(--color-acid)]/25"
+                      : "bg-[var(--color-signal)] text-black shadow-md shadow-[var(--color-signal)]/20"
+                    : "bg-[var(--color-void-3)] text-slate-600 active:bg-[var(--color-void-4)]"
                 }`}
                 aria-label={set.isComplete ? "Rouvrir" : "Valider"}
               >
@@ -347,7 +338,7 @@ export function WorkoutPlayer({ workout, onClose, resumeFromActive }: WorkoutPla
         {pastLogs.length > 0 && (
           <button
             onClick={() => prefillExercise(currentExercise.id)}
-            className="w-full mt-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-white/[0.02] hover:bg-white/[0.05] border border-dashed border-white/[0.07] text-zinc-600 hover:text-zinc-400 text-xs font-medium active:scale-[0.99] transition"
+            className="w-full mt-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-white/[0.02] hover:bg-white/[0.04] border border-dashed border-white/[0.07] text-slate-600 hover:text-slate-400 text-xs font-medium active:scale-[0.99] transition"
           >
             <RotateCcw className="w-3.5 h-3.5" />
             Reprendre la dernière séance
@@ -358,18 +349,18 @@ export function WorkoutPlayer({ workout, onClose, resumeFromActive }: WorkoutPla
   };
 
   return (
-    <div className="flex flex-col h-screen bg-[var(--color-ink-0)] text-[#EDE8E0] overflow-hidden max-w-md mx-auto relative">
+    <div className="flex flex-col h-screen bg-[var(--color-void-0)] text-[#C0D0F0] overflow-hidden max-w-md mx-auto relative">
       {/* Top Bar */}
-      <div className="flex items-center justify-between px-4 py-3 z-10 bg-[var(--color-ink-0)]/90 backdrop-blur-md sticky top-0 border-b border-white/[0.05]">
+      <div className="flex items-center justify-between px-4 py-3 z-10 bg-[var(--color-void-0)]/90 backdrop-blur-md sticky top-0 border-b border-white/[0.05]">
         <button
           onClick={() => setShowAbandonConfirm(true)}
-          className="p-2 -ml-2 text-zinc-500 hover:text-zinc-300 active:text-white transition-colors"
+          className="p-2 -ml-2 text-slate-500 hover:text-slate-300 active:text-white transition-colors"
         >
           <ChevronLeft className="w-7 h-7" />
         </button>
         <div className="text-center">
-          <div className="font-semibold text-sm text-zinc-300 leading-tight">{workoutTitle}</div>
-          <div className="text-[11px] font-mono tnum text-zinc-600 mt-0.5">
+          <div className="font-semibold text-sm text-slate-300 leading-tight">{workoutTitle}</div>
+          <div className="text-[11px] font-mono tnum text-slate-600 mt-0.5">
             {completedSets}/{totalSets} sets · {fmtVol(liveVolume)} kg
           </div>
         </div>
@@ -380,9 +371,9 @@ export function WorkoutPlayer({ workout, onClose, resumeFromActive }: WorkoutPla
       <div className="px-5 pt-3 pb-2">
         <div className="flex items-center gap-1">
           {Array.from({ length: finishStep + 1 }).map((_, i) => (
-            <div key={i} className="flex-1 h-1 rounded-full overflow-hidden bg-white/[0.06]">
+            <div key={i} className="flex-1 h-0.5 rounded-full overflow-hidden bg-white/[0.07]">
               <motion.div
-                className="h-full bg-[var(--color-accent)]"
+                className="h-full bg-[var(--color-signal)]"
                 initial={{ width: 0 }}
                 animate={{ width: i <= step ? "100%" : "0%" }}
                 transition={{ duration: 0.35, ease: "easeOut" }}
@@ -403,16 +394,16 @@ export function WorkoutPlayer({ workout, onClose, resumeFromActive }: WorkoutPla
               exit={{ opacity: 0, y: -12 }}
               className="flex flex-col items-center justify-center text-center space-y-5 pt-12"
             >
-              <div className="w-20 h-20 bg-accent-soft rounded-2xl flex items-center justify-center text-[var(--color-accent)]">
+              <div className="w-20 h-20 bg-signal-soft rounded-2xl flex items-center justify-center text-[var(--color-signal)]">
                 <Flame className="w-10 h-10" />
               </div>
               <div>
-                <div className="text-xs font-medium text-accent mb-2">Étape 1 — Échauffement</div>
-                <h2 className="font-display text-4xl font-bold leading-tight">Prêt à démarrer</h2>
+                <div className="text-xs font-bold uppercase tracking-widest text-[var(--color-signal)] mb-2 opacity-75">Étape 1 — Échauffement</div>
+                <h2 className="font-display font-black text-[#C0D0F0] uppercase" style={{ fontSize: '42px', lineHeight: 0.9 }}>PRÊT À<br />DÉMARRER</h2>
               </div>
-              <p className="text-base text-zinc-400 px-4 max-w-xs leading-relaxed">{workout.warmup}</p>
+              <p className="text-base text-slate-400 px-4 max-w-xs leading-relaxed">{workout.warmup}</p>
               {workout.notes && (
-                <div className="px-4 py-3 rounded-2xl bg-accent-soft border border-accent-soft text-sm text-zinc-300 text-left w-full">
+                <div className="px-4 py-3 rounded-2xl bg-signal-soft border border-signal-soft text-sm text-slate-300 text-left w-full">
                   {workout.notes}
                 </div>
               )}
@@ -429,32 +420,32 @@ export function WorkoutPlayer({ workout, onClose, resumeFromActive }: WorkoutPla
               transition={{ duration: 0.22 }}
               className="flex flex-col pb-10"
             >
-              <div className="flex items-center justify-between mt-5 mb-3">
-                <span className="text-xs text-zinc-500 font-medium">
-                  Exercice {step + 1} sur {workout.exercises.length}
+              <div className="flex items-center justify-between mt-5 mb-2">
+                <span className="text-[11px] text-slate-500 font-medium">
+                  {step + 1} / {workout.exercises.length}
                 </span>
                 <div className="flex items-center gap-1.5">
                   <span className="text-[11px] px-2.5 py-1 bg-blue-500/10 text-blue-300/80 rounded-lg border border-blue-500/15 font-medium">
                     {currentExercise.reps} reps
                   </span>
-                  <span className="text-[11px] px-2.5 py-1 bg-white/[0.05] text-zinc-400 rounded-lg border border-white/[0.07] font-medium">
+                  <span className="text-[11px] px-2.5 py-1 bg-white/[0.05] text-slate-400 rounded-lg border border-white/[0.07] font-medium">
                     RIR {currentExercise.rir}
                   </span>
                 </div>
               </div>
 
-              <h2 className="font-display text-[1.75rem] font-bold leading-tight mb-2">
+              <h2 className="font-display font-black uppercase text-[#C0D0F0] leading-none mb-3" style={{ fontSize: '44px', letterSpacing: '-0.01em' }}>
                 {currentExercise.name}
               </h2>
 
-              <div className="flex items-center gap-3 text-xs text-zinc-500 mb-1">
+              <div className="flex items-center gap-3 text-xs text-slate-500">
                 <span>{currentExercise.sets} séries</span>
-                <span className="w-1 h-1 rounded-full bg-zinc-700" />
+                <span className="w-1 h-1 rounded-full bg-slate-700" />
                 <span>Repos {formatRest(restDuration)}</span>
               </div>
 
               {currentExercise.notes && (
-                <div className="bg-accent-soft text-zinc-300 p-3.5 rounded-2xl text-sm border border-accent-soft font-medium mt-3">
+                <div className="bg-signal-soft text-slate-300 p-3.5 rounded-xl text-sm border border-signal-soft font-medium mt-4">
                   {currentExercise.notes}
                 </div>
               )}
@@ -476,10 +467,10 @@ export function WorkoutPlayer({ workout, onClose, resumeFromActive }: WorkoutPla
                 <Activity className="w-10 h-10" />
               </div>
               <div>
-                <div className="text-xs font-medium text-blue-400 mb-2">Dernière étape</div>
-                <h2 className="font-display text-4xl font-bold leading-tight">Cool-down</h2>
+                <div className="text-xs font-bold uppercase tracking-widest text-blue-400 mb-2 opacity-80">Dernière étape</div>
+                <h2 className="font-display font-black uppercase text-[#C0D0F0]" style={{ fontSize: '42px', lineHeight: 0.9 }}>COOL-DOWN</h2>
               </div>
-              <p className="text-base text-zinc-400 px-4 max-w-xs leading-relaxed">{workout.cooldown}</p>
+              <p className="text-base text-slate-400 px-4 max-w-xs leading-relaxed">{workout.cooldown}</p>
             </motion.div>
           )}
 
@@ -496,24 +487,26 @@ export function WorkoutPlayer({ workout, onClose, resumeFromActive }: WorkoutPla
                 initial={{ scale: 0.6, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 transition={{ delay: 0.1, type: "spring", stiffness: 240, damping: 18 }}
-                className="w-24 h-24 bg-success-soft rounded-full flex items-center justify-center mb-7"
+                className="w-24 h-24 bg-signal-soft rounded-full flex items-center justify-center mb-7"
+                style={{ boxShadow: '0 0 40px rgba(13,223,184,0.2)' }}
               >
-                <CheckCircle2 className="w-11 h-11 text-success" strokeWidth={1.6} />
+                <CheckCircle2 className="w-11 h-11 text-[var(--color-signal)]" strokeWidth={1.6} />
               </motion.div>
 
               <motion.h2
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.18 }}
-                className="font-display text-5xl font-bold mb-2 text-[#EDE8E0]"
+                className="font-display font-black text-[#C0D0F0] mb-1 uppercase"
+                style={{ fontSize: '64px', lineHeight: 0.85 }}
               >
-                Bravo
+                BRAVO
               </motion.h2>
               <motion.p
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.26 }}
-                className="text-zinc-500 text-sm mb-8"
+                className="text-slate-500 text-sm mb-8"
               >
                 Séance enregistrée.
               </motion.p>
@@ -543,12 +536,12 @@ export function WorkoutPlayer({ workout, onClose, resumeFromActive }: WorkoutPla
       />
 
       {/* Bottom bar */}
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-[var(--color-ink-0)] via-[var(--color-ink-0)]/90 to-transparent max-w-md mx-auto z-20 pointer-events-none">
+      <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-[var(--color-void-0)] via-[var(--color-void-0)]/90 to-transparent max-w-md mx-auto z-20 pointer-events-none">
         <div className="flex gap-3 pointer-events-auto">
           {step > -1 && step < finishStep && (
             <button
               onClick={prevStep}
-              className="w-14 h-14 bg-[var(--color-ink-2)] border border-white/[0.06] rounded-2xl flex items-center justify-center text-zinc-400 active:bg-[var(--color-ink-3)] transition-colors shrink-0"
+              className="w-14 h-14 bg-[var(--color-void-2)] border border-white/[0.06] rounded-xl flex items-center justify-center text-slate-400 active:bg-[var(--color-void-3)] transition-colors shrink-0"
             >
               <ChevronLeft className="w-6 h-6" />
             </button>
@@ -557,7 +550,8 @@ export function WorkoutPlayer({ workout, onClose, resumeFromActive }: WorkoutPla
           {step < finishStep ? (
             <button
               onClick={nextStep}
-              className="flex-1 bg-white text-black text-base font-bold py-4 px-6 rounded-2xl active:scale-[0.98] transition-transform flex items-center justify-center gap-2 shadow-lg shadow-black/30"
+              className="flex-1 text-black text-base font-bold py-4 px-6 rounded-xl active:scale-[0.98] transition-transform flex items-center justify-center gap-2"
+              style={{ background: 'var(--color-signal)', boxShadow: '0 6px 20px rgba(13,223,184,0.25)' }}
             >
               {step === -1 ? "Démarrer" : "Exercice suivant"}
               <ChevronRight className="w-5 h-5" />
@@ -565,7 +559,8 @@ export function WorkoutPlayer({ workout, onClose, resumeFromActive }: WorkoutPla
           ) : (
             <button
               onClick={finishWorkout}
-              className="w-full bg-[var(--color-success)] text-white font-bold py-4 rounded-2xl text-base shadow-xl shadow-[var(--color-success)]/20 active:scale-[0.98] transition-transform flex items-center justify-center gap-2"
+              className="w-full text-black font-bold py-4 rounded-xl text-base active:scale-[0.98] transition-transform flex items-center justify-center gap-2"
+              style={{ background: 'var(--color-signal)', boxShadow: '0 6px 24px rgba(13,223,184,0.3)' }}
             >
               <Zap className="w-5 h-5" strokeWidth={2.5} />
               Enregistrer la séance
@@ -590,25 +585,25 @@ export function WorkoutPlayer({ workout, onClose, resumeFromActive }: WorkoutPla
               exit={{ y: "100%" }}
               transition={{ type: "spring", stiffness: 400, damping: 36 }}
               onClick={e => e.stopPropagation()}
-              className="w-full bg-[var(--color-ink-1)] border-t border-white/[0.06] rounded-t-3xl px-5 pb-10 pt-5"
+              className="w-full bg-[var(--color-void-1)] border-t border-white/[0.07] rounded-t-3xl px-5 pb-10 pt-5"
             >
               <div className="w-10 h-1 rounded-full bg-white/10 mx-auto mb-5" />
-              <p className="font-display text-xl font-bold text-[#EDE8E0] mb-1">
-                Abandonner la séance ?
+              <p className="font-display font-black text-[#C0D0F0] mb-1 uppercase" style={{ fontSize: '28px' }}>
+                Abandonner ?
               </p>
-              <p className="text-zinc-500 text-sm mb-6 leading-relaxed">
+              <p className="text-slate-500 text-sm mb-6 leading-relaxed">
                 Ta progression ne sera pas enregistrée.
               </p>
               <div className="flex gap-3">
                 <button
                   onClick={() => setShowAbandonConfirm(false)}
-                  className="flex-1 bg-[var(--color-ink-2)] text-[#EDE8E0] font-bold py-4 rounded-2xl border border-white/[0.06] active:scale-[0.98] transition"
+                  className="flex-1 bg-[var(--color-void-2)] text-[#C0D0F0] font-bold py-4 rounded-xl border border-white/[0.06] active:scale-[0.98] transition"
                 >
                   Continuer
                 </button>
                 <button
                   onClick={doAbandon}
-                  className="flex-1 bg-red-500/10 text-red-400 font-bold py-4 rounded-2xl border border-red-500/15 active:scale-[0.98] transition"
+                  className="flex-1 bg-red-500/10 text-red-400 font-bold py-4 rounded-xl border border-red-500/15 active:scale-[0.98] transition"
                 >
                   Abandonner
                 </button>
@@ -623,11 +618,11 @@ export function WorkoutPlayer({ workout, onClose, resumeFromActive }: WorkoutPla
 
 function StatCard({ label, value, unit }: { label: string; value: string; unit?: string }) {
   return (
-    <div className="rounded-2xl bg-[var(--color-ink-2)] border border-white/[0.06] p-4 text-left">
-      <div className="text-[10px] font-medium text-zinc-500 mb-1.5">{label}</div>
-      <div className="font-mono tnum font-bold text-2xl text-[#EDE8E0] leading-none">
+    <div className="rounded-xl bg-[var(--color-void-2)] border border-white/[0.06] p-4 text-left">
+      <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-600 mb-1.5">{label}</div>
+      <div className="font-mono tnum font-bold text-2xl text-[#C0D0F0] leading-none">
         {value}
-        {unit && <span className="text-xs text-zinc-500 ml-1 font-sans">{unit}</span>}
+        {unit && <span className="text-xs text-slate-500 ml-1 font-sans">{unit}</span>}
       </div>
     </div>
   );

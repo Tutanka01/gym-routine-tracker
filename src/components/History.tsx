@@ -33,18 +33,18 @@ export function History({ onClose }: Props) {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-[var(--color-ink-0)] text-[#EDE8E0] max-w-md mx-auto relative">
+    <div className="flex flex-col min-h-screen bg-[var(--color-void-0)] text-[#C0D0F0] max-w-md mx-auto relative">
       {/* Header */}
-      <div className="sticky top-0 z-20 bg-[var(--color-ink-0)]/90 backdrop-blur-xl border-b border-white/[0.05]">
+      <div className="sticky top-0 z-20 bg-[var(--color-void-0)]/90 backdrop-blur-xl border-b border-white/[0.05]">
         <div className="flex items-center p-4">
           <button
             onClick={onClose}
             aria-label="Retour"
-            className="relative z-10 p-2 -ml-2 text-zinc-500 hover:text-zinc-300 active:text-white transition-colors shrink-0"
+            className="relative z-10 p-2 -ml-2 text-slate-500 hover:text-slate-300 active:text-white transition-colors shrink-0"
           >
             <ChevronLeft className="w-7 h-7" />
           </button>
-          <h1 className="flex-1 text-center font-semibold text-sm text-zinc-400 pointer-events-none">
+          <h1 className="flex-1 text-center text-[10px] font-bold tracking-[0.3em] text-slate-500 uppercase pointer-events-none">
             Historique
           </h1>
           <div className="w-11 shrink-0" />
@@ -52,7 +52,7 @@ export function History({ onClose }: Props) {
 
         {/* Tabs */}
         <div className="px-4 pb-3">
-          <div className="flex p-1 bg-white/[0.04] rounded-xl border border-white/[0.05]">
+          <div className="flex p-1 bg-[var(--color-void-2)] rounded-xl border border-white/[0.05]">
             <TabBtn active={tab === "exercises"} onClick={() => setTab("exercises")}>Exercices</TabBtn>
             <TabBtn active={tab === "sessions"} onClick={() => setTab("sessions")}>Séances</TabBtn>
           </div>
@@ -63,18 +63,18 @@ export function History({ onClose }: Props) {
         {tab === "exercises" && (
           <div className="px-4 pt-4 space-y-2">
             {/* Search */}
-            <label className="flex items-center gap-2 px-3 h-11 bg-[var(--color-ink-2)] rounded-xl border border-white/5 mb-3">
-              <Search className="w-4 h-4 text-zinc-500" />
+            <label className="flex items-center gap-2 px-3 h-11 bg-[var(--color-void-2)] rounded-xl border border-white/[0.05] mb-3">
+              <Search className="w-4 h-4 text-slate-500" />
               <input
                 value={query}
                 onChange={e => setQuery(e.target.value)}
                 placeholder="Rechercher un exercice…"
-                className="flex-1 bg-transparent outline-none text-sm placeholder-zinc-600"
+                className="flex-1 bg-transparent outline-none text-sm placeholder-slate-700"
               />
             </label>
 
             {exercises.length === 0 && (
-              <div className="text-center text-zinc-500 text-sm py-12">Aucun exercice trouvé.</div>
+              <div className="text-center text-slate-500 text-sm py-12">Aucun exercice trouvé.</div>
             )}
 
             {exercises.map(ex => {
@@ -90,22 +90,26 @@ export function History({ onClose }: Props) {
                 <motion.div
                   key={ex.id}
                   layout
-                  className={`rounded-2xl border transition-colors ${open ? "bg-[var(--color-ink-2)] border-white/[0.08]" : "bg-[var(--color-ink-1)] border-white/[0.04]"}`}
+                  className={`rounded-2xl border transition-colors ${
+                    open
+                      ? "bg-[var(--color-void-2)] border-white/[0.08]"
+                      : "bg-[var(--color-void-1)] border-white/[0.04]"
+                  }`}
                 >
                   <button
                     onClick={() => setOpenExId(open ? null : ex.id)}
                     className="w-full text-left p-4 flex items-start gap-3"
                   >
                     <div className="flex-1 min-w-0">
-                      <div className="text-[10px] font-medium text-zinc-600 mb-1">
+                      <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-600 mb-1">
                         {ctx?.workout.name.split("—").pop()?.trim() || ""}
                       </div>
-                      <div className="font-display font-bold text-base leading-tight truncate">{ex.name}</div>
-                      <div className="flex items-center gap-3 mt-2 text-xs text-zinc-500 font-mono tnum">
+                      <div className="font-bold text-base leading-tight truncate text-[#C0D0F0]">{ex.name}</div>
+                      <div className="flex items-center gap-3 mt-2 text-xs text-slate-500 font-mono tnum">
                         <span>{prog.length} séances</span>
                         {best && (
                           <>
-                            <span className="w-1 h-1 rounded-full bg-zinc-700" />
+                            <span className="w-1 h-1 rounded-full bg-slate-700" />
                             <span className="flex items-center gap-1 text-[var(--color-acid)]">
                               <Trophy className="w-3 h-3" /> {best.weight}×{best.reps}
                             </span>
@@ -114,7 +118,9 @@ export function History({ onClose }: Props) {
                       </div>
                     </div>
                     {prog.length > 1 && (
-                      <div className={`flex items-center gap-1 text-xs font-mono tnum font-bold ${trendUp ? "text-success" : "text-[var(--color-accent)]"}`}>
+                      <div className={`flex items-center gap-1 text-xs font-mono tnum font-bold ${
+                        trendUp ? "text-[var(--color-signal)]" : "text-[var(--color-flame)]"
+                      }`}>
                         {trendUp ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
                         {trendUp ? "+" : ""}{Math.round(trend)}
                       </div>
@@ -130,28 +136,28 @@ export function History({ onClose }: Props) {
                         className="overflow-hidden"
                       >
                         <div className="px-4 pb-4 space-y-3">
-                          <div className="rounded-xl bg-[var(--color-ink-0)] border border-white/[0.05] p-3 spark-grid">
+                          <div className="rounded-xl bg-[var(--color-void-0)] border border-white/[0.05] p-3 spark-grid">
                             <div className="flex items-center justify-between mb-2">
-                              <div className="text-[10px] font-medium text-zinc-500">Volume top set</div>
-                              <div className="text-[10px] font-mono tnum text-zinc-600">{prog.length} pts</div>
+                              <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">Volume top set</div>
+                              <div className="text-[10px] font-mono tnum text-slate-600">{prog.length} pts</div>
                             </div>
-                            <Sparkline values={values} />
+                            <Sparkline values={values} stroke="#0DDFB8" fill="rgba(13,223,184,0.07)" />
                           </div>
 
                           <div className="space-y-1.5">
                             {prog.slice().reverse().slice(0, 8).map((p, i) => (
                               <div key={i} className="flex items-center gap-3 px-3 h-10 rounded-lg bg-white/[0.02] border border-white/[0.04]">
-                                <div className="text-[11px] font-mono tnum text-zinc-500 w-16">{fmtDate(p.date)}</div>
+                                <div className="text-[11px] font-mono tnum text-slate-500 w-16">{fmtDate(p.date)}</div>
                                 <div className="flex-1 font-mono tnum text-sm">
-                                  <span className="text-[#EDE8E0]">{p.top!.weight}</span>
-                                  <span className="text-zinc-600 mx-1">×</span>
-                                  <span className="text-[#EDE8E0]">{p.top!.reps}</span>
+                                  <span className="text-[#C0D0F0]">{p.top!.weight}</span>
+                                  <span className="text-slate-700 mx-1">×</span>
+                                  <span className="text-[#C0D0F0]">{p.top!.reps}</span>
                                 </div>
-                                <div className="text-xs font-mono tnum text-zinc-500">{Math.round(p.volume)} kg</div>
+                                <div className="text-xs font-mono tnum text-slate-500">{Math.round(p.volume)} kg</div>
                               </div>
                             ))}
                             {prog.length === 0 && (
-                              <div className="text-xs text-zinc-600 italic py-2">Aucune donnée enregistrée pour cet exercice.</div>
+                              <div className="text-xs text-slate-600 italic py-2">Aucune donnée enregistrée pour cet exercice.</div>
                             )}
                           </div>
                         </div>
@@ -167,8 +173,8 @@ export function History({ onClose }: Props) {
         {tab === "sessions" && (
           <div className="px-4 pt-4 space-y-2">
             {sessions.length === 0 && (
-              <div className="text-center text-zinc-500 text-sm py-16">
-                <Calendar className="w-10 h-10 mx-auto text-zinc-700 mb-3" />
+              <div className="text-center text-slate-500 text-sm py-16">
+                <Calendar className="w-10 h-10 mx-auto text-slate-700 mb-3" />
                 Aucune séance enregistrée.
               </div>
             )}
@@ -180,24 +186,24 @@ export function History({ onClose }: Props) {
                 <button
                   key={s.id}
                   onClick={() => setOpenSession(s)}
-                  className="w-full p-4 rounded-2xl bg-[var(--color-ink-1)] border border-white/[0.04] text-left active:bg-[var(--color-ink-2)] transition"
+                  className="w-full p-4 rounded-2xl bg-[var(--color-void-1)] border border-white/[0.04] text-left active:bg-[var(--color-void-2)] transition"
                 >
                   <div className="flex items-center justify-between mb-1">
-                    <div className="text-[11px] font-medium text-success">
+                    <div className="text-[11px] font-bold uppercase tracking-wider text-[var(--color-signal)]" style={{ opacity: 0.8 }}>
                       {fmtRelativeShort(s.date)}
                     </div>
-                    <div className="text-[10px] font-mono tnum text-zinc-600">{new Date(s.date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</div>
+                    <div className="text-[10px] font-mono tnum text-slate-600">{new Date(s.date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</div>
                   </div>
-                  <div className="font-display font-bold text-base leading-tight mb-2">
+                  <div className="font-bold text-base leading-tight mb-2 text-[#C0D0F0]">
                     {w?.name.split("—").pop()?.trim() || s.workoutName || s.workoutId}
                   </div>
-                  <div className="flex items-center gap-4 text-xs font-mono tnum text-zinc-500">
+                  <div className="flex items-center gap-4 text-xs font-mono tnum text-slate-500">
                     <span>{setsCount} sets</span>
-                    <span className="w-1 h-1 rounded-full bg-zinc-700" />
+                    <span className="w-1 h-1 rounded-full bg-slate-700" />
                     <span>{fmtVol(vol)} kg</span>
                     {s.durationSec && (
                       <>
-                        <span className="w-1 h-1 rounded-full bg-zinc-700" />
+                        <span className="w-1 h-1 rounded-full bg-slate-700" />
                         <span>{Math.floor(s.durationSec / 60)}'</span>
                       </>
                     )}
@@ -225,16 +231,16 @@ export function History({ onClose }: Props) {
               exit={{ y: "100%" }}
               transition={{ type: "spring", stiffness: 360, damping: 36 }}
               onClick={e => e.stopPropagation()}
-              className="w-full bg-[var(--color-ink-1)] border-t border-white/10 rounded-t-[28px] max-h-[85vh] overflow-y-auto view-no-scrollbar"
+              className="w-full bg-[var(--color-void-1)] border-t border-white/[0.08] rounded-t-[28px] max-h-[85vh] overflow-y-auto view-no-scrollbar"
             >
-              <div className="px-5 pt-4 pb-2 flex items-center justify-between">
-                <div className="w-10 h-1 rounded-full bg-white/10 mx-auto" />
+              <div className="px-5 pt-4 pb-2 flex items-center justify-center">
+                <div className="w-10 h-1 rounded-full bg-white/10" />
               </div>
               <div className="px-5 pb-6">
-                <div className="text-[11px] font-medium text-success mb-1">
+                <div className="text-[11px] font-bold uppercase tracking-wider text-[var(--color-signal)] mb-1" style={{ opacity: 0.75 }}>
                   {fmtDate(openSession.date)}
                 </div>
-                <h3 className="font-display font-bold text-2xl mb-4">
+                <h3 className="font-display font-black uppercase text-[#C0D0F0] mb-4" style={{ fontSize: '32px', lineHeight: 0.9 }}>
                   {workouts[openSession.workoutId]?.name.split("—").pop()?.trim() || openSession.workoutName}
                 </h3>
 
@@ -244,21 +250,21 @@ export function History({ onClose }: Props) {
                     if (!ex) return null;
                     const top = topSet(log.sets);
                     return (
-                      <div key={exId} className="p-3 rounded-xl bg-white/[0.03] border border-white/5">
-                        <div className="font-bold text-sm mb-2">{ex.name}</div>
+                      <div key={exId} className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.05]">
+                        <div className="font-bold text-sm mb-2 text-[#C0D0F0]">{ex.name}</div>
                         <div className="grid grid-cols-3 gap-1.5">
                           {log.sets.map((set, i) => (
                             <div
                               key={i}
-                              className={`text-xs font-mono tnum px-2 py-1.5 rounded-md text-center ${
+                              className={`text-xs font-mono tnum px-2 py-1.5 rounded-lg text-center ${
                                 set === top && Number(set.weight) > 0
-                                  ? "bg-[var(--color-acid)]/12 text-[var(--color-acid)] border border-[var(--color-acid)]/25"
+                                  ? "bg-acid-soft text-[var(--color-acid)] border border-acid-soft"
                                   : set.isComplete
-                                  ? "bg-success-soft text-success border border-success-soft"
-                                  : "bg-white/[0.02] text-zinc-600 border border-white/[0.05]"
+                                  ? "bg-signal-soft text-[var(--color-signal)] border border-signal-soft"
+                                  : "bg-white/[0.02] text-slate-600 border border-white/[0.04]"
                               }`}
                             >
-                              {set.weight || "—"}<span className="text-zinc-600 mx-0.5">×</span>{set.reps || "—"}
+                              {set.weight || "—"}<span className="text-slate-700 mx-0.5">×</span>{set.reps || "—"}
                             </div>
                           ))}
                         </div>
@@ -286,8 +292,8 @@ function TabBtn({ active, onClick, children }: { active: boolean; onClick: () =>
   return (
     <button
       onClick={onClick}
-      className={`flex-1 py-2.5 rounded-lg text-xs font-semibold transition ${
-        active ? "bg-white text-black shadow" : "text-zinc-500"
+      className={`flex-1 py-2.5 rounded-lg text-xs font-bold transition ${
+        active ? "bg-white text-black shadow" : "text-slate-500"
       }`}
     >
       {children}

@@ -27,7 +27,7 @@ export default function App() {
   };
 
   return (
-    <div className="w-full min-h-screen bg-[var(--color-ink-0)] text-zinc-50 font-sans selection:bg-emerald-500/30">
+    <div className="w-full min-h-screen bg-[var(--color-void-0)] text-[#C0D0F0] font-sans selection:bg-[var(--color-signal)]/20">
       <AnimatePresence mode="wait">
         {view === 'workout' && activeWorkoutId ? (
           <motion.div
@@ -36,7 +36,7 @@ export default function App() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.97 }}
             transition={{ duration: 0.25 }}
-            className="fixed inset-0 w-full h-full z-10 bg-[var(--color-ink-0)]"
+            className="fixed inset-0 w-full h-full z-10 bg-[var(--color-void-0)]"
           >
             <WorkoutPlayer
               workout={workouts[activeWorkoutId]}
@@ -51,7 +51,7 @@ export default function App() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.97 }}
             transition={{ duration: 0.25 }}
-            className="fixed inset-0 w-full h-full z-10 bg-[var(--color-ink-0)]"
+            className="fixed inset-0 w-full h-full z-10 bg-[var(--color-void-0)]"
           >
             <SundayCheckin onClose={goHome} />
           </motion.div>
@@ -62,7 +62,7 @@ export default function App() {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -24 }}
             transition={{ duration: 0.22 }}
-            className="fixed inset-0 w-full h-full z-10 bg-[var(--color-ink-0)]"
+            className="fixed inset-0 w-full h-full z-10 bg-[var(--color-void-0)]"
           >
             <History onClose={goHome} />
           </motion.div>
@@ -73,7 +73,7 @@ export default function App() {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -24 }}
             transition={{ duration: 0.22 }}
-            className="fixed inset-0 w-full h-full z-10 bg-[var(--color-ink-0)]"
+            className="fixed inset-0 w-full h-full z-10 bg-[var(--color-void-0)]"
           >
             <Settings onClose={goHome} />
           </motion.div>

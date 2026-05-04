@@ -1,27 +1,26 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&family=Geist:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Syne:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Geist", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Outfit", "Geist", sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --font-sans: "Syne", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Barlow Condensed", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
 
-  /* Warm dark palette */
-  --color-ink-0: #0E0C09;
-  --color-ink-1: #181411;
-  --color-ink-2: #221E1A;
-  --color-ink-3: #2D2924;
-  --color-ink-4: #38332D;
+  /* Deep void palette — cool blue-black */
+  --color-void-0: #070910;
+  --color-void-1: #0C0F1C;
+  --color-void-2: #111526;
+  --color-void-3: #171C30;
+  --color-void-4: #1E263D;
 
-  /* Accent: ember orange (primary) */
-  --color-accent: #E96B2E;
-  --color-flame: #E96B2E;
+  /* Electric teal — primary signature */
+  --color-signal: #0DDFB8;
+  --color-accent:  #0DDFB8;
+  --color-success: #0DDFB8;
+  --color-flame:   #FF6B35;
 
-  /* Success: warm completion green */
-  --color-success: #3AAD72;
-
-  /* PR only: electric lime */
-  --color-acid: #C2FF2A;
+  /* PR: electric gold */
+  --color-acid: #FFD740;
 }
 
 :root {
@@ -30,62 +29,72 @@
 
 html, body, #root {
   height: 100%;
-  background: #0E0C09;
+  background: #070910;
 }
 
 body {
-  background-color: #0E0C09;
-  color: #EDE8E0;
+  background-color: #070910;
+  color: #C0D0F0;
   -webkit-tap-highlight-color: transparent;
-  font-family: "Geist", ui-sans-serif, system-ui, sans-serif;
-  font-feature-settings: "ss01", "cv01", "cv02";
+  font-family: "Syne", ui-sans-serif, system-ui, sans-serif;
   letter-spacing: -0.01em;
   overscroll-behavior-y: none;
 }
 
-.font-display { font-family: "Outfit", sans-serif; letter-spacing: -0.02em; }
-.font-mono    { font-family: "JetBrains Mono", ui-monospace, monospace; }
+.font-display { font-family: "Barlow Condensed", sans-serif; letter-spacing: -0.01em; }
+.font-mono    { font-family: "IBM Plex Mono", ui-monospace, monospace; }
 .tnum         { font-variant-numeric: tabular-nums; }
 
 .view-no-scrollbar::-webkit-scrollbar { display: none; }
 .view-no-scrollbar { scrollbar-width: none; }
 
-/* Hide number input spinners */
 input[type=number]::-webkit-inner-spin-button,
 input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 input[type=number] { -moz-appearance: textfield; }
 
-/* Warm-toned utilities for success / accent */
-.bg-success-soft { background-color: color-mix(in srgb, var(--color-success) 12%, transparent); }
-.bg-accent-soft  { background-color: color-mix(in srgb, var(--color-accent) 14%, transparent); }
-.border-success-soft { border-color: color-mix(in srgb, var(--color-success) 25%, transparent); }
-.border-accent-soft  { border-color: color-mix(in srgb, var(--color-accent) 25%, transparent); }
-.text-success { color: var(--color-success); }
-.text-accent  { color: var(--color-accent); }
+/* Tonal utilities */
+.bg-signal-soft   { background-color: color-mix(in srgb, var(--color-signal) 10%, transparent); }
+.bg-acid-soft     { background-color: color-mix(in srgb, var(--color-acid) 10%, transparent); }
+.bg-accent-soft   { background-color: color-mix(in srgb, var(--color-signal) 10%, transparent); }
+.bg-success-soft  { background-color: color-mix(in srgb, var(--color-signal) 10%, transparent); }
+.border-signal-soft  { border-color: color-mix(in srgb, var(--color-signal) 22%, transparent); }
+.border-success-soft { border-color: color-mix(in srgb, var(--color-signal) 22%, transparent); }
+.border-acid-soft    { border-color: color-mix(in srgb, var(--color-acid) 22%, transparent); }
+.border-accent-soft  { border-color: color-mix(in srgb, var(--color-signal) 22%, transparent); }
+.text-signal  { color: var(--color-signal); }
+.text-success { color: var(--color-signal); }
+.text-accent  { color: var(--color-signal); }
 
 /* Tick pop for live volume */
 @keyframes tick-pop {
   0%   { transform: translateY(0) scale(1); }
-  40%  { transform: translateY(-2px) scale(1.05); }
+  40%  { transform: translateY(-3px) scale(1.06); }
   100% { transform: translateY(0) scale(1); }
 }
-.tick-pop { animation: tick-pop 0.5s cubic-bezier(.2,.8,.2,1); }
+.tick-pop { animation: tick-pop 0.45s cubic-bezier(.2,.8,.2,1); }
 
-/* PR celebration — electric lime flash */
+/* PR celebration — gold flash */
 @keyframes pr-flash {
-  0%   { box-shadow: 0 0 0 0 rgba(194,255,42,0); }
-  35%  { box-shadow: 0 0 50px 4px rgba(194,255,42,0.45), 0 0 80px 8px rgba(233,107,46,0.18); }
-  100% { box-shadow: 0 0 0 0 rgba(194,255,42,0); }
+  0%   { box-shadow: 0 0 0 0 rgba(255,215,64,0); }
+  30%  { box-shadow: 0 0 36px 5px rgba(255,215,64,0.55), 0 0 70px 10px rgba(255,190,0,0.2); }
+  100% { box-shadow: 0 0 0 0 rgba(255,215,64,0); }
 }
-.pr-flash { animation: pr-flash 1.3s ease-out; }
+.pr-flash { animation: pr-flash 1.4s ease-out; }
+
+/* Signal glow keyframe for rest timer ring */
+@keyframes signal-glow {
+  0%, 100% { filter: drop-shadow(0 0 4px rgba(13,223,184,0.3)); }
+  50%       { filter: drop-shadow(0 0 10px rgba(13,223,184,0.6)); }
+}
+.signal-glow { animation: signal-glow 2s ease-in-out infinite; }
 
 /* Hairline divider */
-.hairline { border-top: 1px solid rgba(255,240,220,0.06); }
+.hairline { border-top: 1px solid rgba(100,150,255,0.07); }
 
 /* Sparkline grid */
 .spark-grid {
   background-image:
-    linear-gradient(rgba(255,240,220,0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,240,220,0.03) 1px, transparent 1px);
+    linear-gradient(rgba(100,150,255,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(100,150,255,0.04) 1px, transparent 1px);
   background-size: 16px 16px;
 }

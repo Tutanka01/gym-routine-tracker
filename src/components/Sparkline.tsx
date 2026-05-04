@@ -11,8 +11,8 @@ export function Sparkline({
   values,
   width = 240,
   height = 64,
-  stroke = "#34d399",
-  fill = "rgba(52,211,153,0.10)",
+  stroke = "#0DDFB8",
+  fill = "rgba(13,223,184,0.08)",
   showDots = true,
 }: SparklineProps) {
   if (values.length === 0) {
@@ -55,8 +55,8 @@ export function Sparkline({
             cx={x}
             cy={y}
             r={isLast ? 4 : 2.2}
-            fill={isLast ? (isUp ? "#b6ff3c" : "#ff6b1a") : stroke}
-            stroke={isLast ? "rgba(0,0,0,0.6)" : "none"}
+            fill={isLast ? (isUp ? "#0DDFB8" : "#FF6B35") : stroke}
+            stroke={isLast ? "rgba(0,0,0,0.5)" : "none"}
             strokeWidth={isLast ? 2 : 0}
           />
         );
@@ -67,9 +67,9 @@ export function Sparkline({
           y={Math.max(12, last[1] - 8)}
           textAnchor="end"
           fontSize="10"
-          fontFamily="JetBrains Mono, monospace"
+          fontFamily="IBM Plex Mono, monospace"
           fontWeight="700"
-          fill={isUp ? "#b6ff3c" : "#ff6b1a"}
+          fill={isUp ? "#0DDFB8" : "#FF6B35"}
         >
           {Math.round(values[values.length - 1])}
         </text>
