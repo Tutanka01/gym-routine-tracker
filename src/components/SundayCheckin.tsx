@@ -69,11 +69,15 @@ export function SundayCheckin({ onClose }: Props) {
   return (
     <div className="flex flex-col min-h-screen bg-[var(--color-ink-0)] text-white max-w-md mx-auto relative">
       <div className="flex items-center p-4 sticky top-0 bg-[var(--color-ink-0)]/85 backdrop-blur-xl z-10 border-b border-white/5">
-        <button onClick={onClose} className="p-2 -ml-2 text-zinc-400 active:text-white">
+        <button
+          onClick={onClose}
+          aria-label="Retour"
+          className="relative z-10 p-2 -ml-2 text-zinc-400 active:text-white shrink-0"
+        >
           <ChevronLeft className="w-7 h-7" />
         </button>
-        <h1 className="font-display font-bold text-xs tracking-[0.3em] text-zinc-400 uppercase mx-auto -ml-7">Rituel du dimanche</h1>
-        <div className="w-7" />
+        <h1 className="flex-1 text-center font-display font-bold text-xs tracking-[0.3em] text-zinc-400 uppercase pointer-events-none">Rituel du dimanche</h1>
+        <div className="w-11 shrink-0" />
       </div>
 
       <div className="px-5 pt-6 flex-1">

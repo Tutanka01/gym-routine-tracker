@@ -37,13 +37,17 @@ export function History({ onClose }: Props) {
       {/* Header */}
       <div className="sticky top-0 z-20 bg-[var(--color-ink-0)]/85 backdrop-blur-xl border-b border-white/5">
         <div className="flex items-center p-4">
-          <button onClick={onClose} className="p-2 -ml-2 text-zinc-400 active:text-white">
+          <button
+            onClick={onClose}
+            aria-label="Retour"
+            className="relative z-10 p-2 -ml-2 text-zinc-400 active:text-white shrink-0"
+          >
             <ChevronLeft className="w-7 h-7" />
           </button>
-          <h1 className="font-display font-bold text-xs tracking-[0.3em] text-zinc-400 uppercase mx-auto -ml-7">
+          <h1 className="flex-1 text-center font-display font-bold text-xs tracking-[0.3em] text-zinc-400 uppercase pointer-events-none">
             Historique
           </h1>
-          <div className="w-7" />
+          <div className="w-11 shrink-0" />
         </div>
 
         {/* Tabs */}
