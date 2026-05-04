@@ -17,13 +17,13 @@ export const topSet = (sets: SetData[]): SetData | null => {
 
 export const isVolumePR = (candidate: SetData, history: SetData[]) => {
   const v = setVolume(candidate);
-  if (v <= 0) return false;
+  if (v <= 0 || history.length === 0) return false;
   return history.every(h => setVolume(h) < v);
 };
 
 export const isWeightPR = (candidate: SetData, history: SetData[]) => {
   const w = Number(candidate.weight) || 0;
-  if (w <= 0) return false;
+  if (w <= 0 || history.length === 0) return false;
   return history.every(h => (Number(h.weight) || 0) < w);
 };
 
@@ -89,7 +89,7 @@ export const sessionsThisWeek = (sessions: WorkoutSession[]) => {
 };
 
 export const fmtVol = (n: number) => {
-  if (n >= 1000) return `${(n / 1000).toFixed(1)}T`;
+  if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
   return `${Math.round(n)}`;
 };
 
