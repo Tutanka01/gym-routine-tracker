@@ -1,0 +1,114 @@
+export type Exercise = {
+  id: string;
+  name: string;
+  sets: number;
+  reps: string;
+  rir: string;
+  /** Default rest between sets in seconds. Compounds get more, isolation less. */
+  rest?: number;
+  notes?: string;
+};
+
+export type Workout = {
+  id: string;
+  name: string;
+  warmup: string;
+  exercises: Exercise[];
+  cooldown?: string;
+  notes?: string;
+};
+
+export type WeekDay = {
+  day: string;
+  type: "workout" | "rest";
+  workoutId?: string;
+  description?: string;
+};
+
+export const workouts: Record<string, Workout> = {
+  "upper-a": {
+    id: "upper-a",
+    name: "SÉANCE 1 — UPPER A",
+    warmup: "5 à 8 min marche inclinée ou vélo tranquille.",
+    exercises: [
+      { id: "ua1", name: "Chest press machine ou développé couché", sets: 3, reps: "6-10", rir: "2", rest: 150 },
+      { id: "ua2", name: "Tirage vertical / Lat pulldown", sets: 3, reps: "8-12", rir: "2", rest: 120 },
+      { id: "ua3", name: "Rowing assis machine ou câble", sets: 3, reps: "8-12", rir: "2", rest: 120 },
+      { id: "ua4", name: "Développé épaules machine", sets: 3, reps: "8-12", rir: "2", rest: 120 },
+      { id: "ua5", name: "Élévations latérales haltères ou câble", sets: 3, reps: "12-20", rir: "1-2", rest: 60 },
+      { id: "ua6", name: "Extension triceps à la corde", sets: 3, reps: "10-15", rir: "1-2", rest: 75 },
+      { id: "ua7", name: "Curl incliné ou curl câble", sets: 3, reps: "10-15", rir: "1-2", rest: 75 },
+    ],
+    cooldown: "15 à 20 min marche inclinée tranquille.",
+  },
+  "lower-a": {
+    id: "lower-a",
+    name: "SÉANCE 2 — LOWER A",
+    warmup: "5 à 8 min vélo ou marche.",
+    exercises: [
+      { id: "la1", name: "Leg press ou hack squat", sets: 3, reps: "8-12", rir: "2", rest: 180 },
+      { id: "la2", name: "Romanian deadlift haltères ou barre", sets: 3, reps: "8-10", rir: "2-3", rest: 180 },
+      { id: "la3", name: "Leg curl", sets: 3, reps: "10-15", rir: "1-2", rest: 90 },
+      { id: "la4", name: "Leg extension", sets: 3, reps: "10-15", rir: "1-2", rest: 90 },
+      { id: "la5", name: "Mollets debout ou assis", sets: 3, reps: "10-20", rir: "1-2", rest: 60 },
+      { id: "la6", name: "Gainage ou crunch câble", sets: 3, reps: "10-15 (ou 30-60s)", rir: "-", rest: 60 },
+    ],
+    notes: "Important: Ne pas détruire les jambes les deux premières semaines. Le but est de reprendre, pas de boiter pendant 4 jours.",
+  },
+  "upper-b": {
+    id: "upper-b",
+    name: "SÉANCE 3 — UPPER B",
+    warmup: "5 à 8 min marche inclinée ou vélo tranquille.",
+    exercises: [
+      { id: "ub1", name: "Développé incliné haltères ou machine", sets: 3, reps: "8-12", rir: "2", rest: 150 },
+      { id: "ub2", name: "Rowing poitrine appuyée / chest-supported row", sets: 3, reps: "8-12", rir: "2", rest: 120 },
+      { id: "ub3", name: "Tirage neutre ou tractions assistées", sets: 3, reps: "8-12", rir: "2", rest: 120 },
+      { id: "ub4", name: "Pec deck ou écartés câble", sets: 3, reps: "12-15", rir: "1-2", rest: 75 },
+      { id: "ub5", name: "Oiseau machine / rear delts", sets: 3, reps: "12-20", rir: "1-2", rest: 60 },
+      { id: "ub6", name: "Dips assistés ou extension triceps", sets: 3, reps: "8-15", rir: "1-2", rest: 90 },
+      { id: "ub7", name: "Curl marteau", sets: 3, reps: "10-15", rir: "1-2", rest: 75 },
+    ],
+    cooldown: "15 à 20 min marche inclinée tranquille.",
+  },
+  "lower-b": {
+    id: "lower-b",
+    name: "SÉANCE 4 — LOWER B",
+    warmup: "5 à 8 min vélo ou marche.",
+    exercises: [
+      { id: "lb1", name: "Squat guidé, hack squat ou goblet squat", sets: 3, reps: "8-12", rir: "2", rest: 180 },
+      { id: "lb2", name: "Hip thrust ou presse pieds hauts", sets: 3, reps: "8-12", rir: "2", rest: 150 },
+      { id: "lb3", name: "Fentes bulgares ou split squat", sets: 2, reps: "8-12", rir: "2-3", rest: 120, notes: "Si les fentes détruisent trop : Remplacer par une machine jambes plus stable." },
+      { id: "lb4", name: "Leg curl assis ou allongé", sets: 3, reps: "10-15", rir: "1-2", rest: 90 },
+      { id: "lb5", name: "Mollets", sets: 3, reps: "10-20", rir: "1-2", rest: 60 },
+      { id: "lb6", name: "Relevés de jambes ou crunch câble", sets: 3, reps: "10-15", rir: "-", rest: 60 },
+    ]
+  }
+};
+
+export const weeklySchedule: WeekDay[] = [
+  { day: "Lundi", type: "workout", workoutId: "upper-a", description: "Matin : Upper A" },
+  { day: "Mardi", type: "workout", workoutId: "lower-a", description: "Matin : Lower A" },
+  { day: "Mercredi", type: "rest", description: "Repos actif / marche" },
+  { day: "Jeudi", type: "workout", workoutId: "upper-b", description: "Matin : Upper B" },
+  { day: "Vendredi", type: "workout", workoutId: "lower-b", description: "Matin : Lower B" },
+  { day: "Samedi", type: "rest", description: "Marche longue ou cardio léger" },
+  { day: "Dimanche", type: "rest", description: "Repos + pesée + photo + tour de taille" },
+];
+
+export function getToday(): WeekDay {
+  const date = new Date();
+  let dayIndex = date.getDay();
+  if (dayIndex === 0) dayIndex = 7;
+  return weeklySchedule[dayIndex - 1];
+}
+
+export const allExercises = (): Exercise[] =>
+  Object.values(workouts).flatMap(w => w.exercises);
+
+export const findExercise = (id: string): { workout: Workout; exercise: Exercise } | null => {
+  for (const w of Object.values(workouts)) {
+    const ex = w.exercises.find(e => e.id === id);
+    if (ex) return { workout: w, exercise: ex };
+  }
+  return null;
+};
