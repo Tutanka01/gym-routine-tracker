@@ -16,9 +16,10 @@ export type SetData = {
   reps: string;
   isComplete: boolean;
   ts?: number;
+  note?: string;
 };
 
-export type ExerciseLog = { sets: SetData[] };
+export type ExerciseLog = { sets: SetData[]; displayName?: string };
 
 export type WorkoutSession = {
   v: number;

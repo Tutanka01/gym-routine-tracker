@@ -1,4 +1,5 @@
-import { WorkoutSession, SetData } from './storage';
+import { Workout } from '../data';
+import { WorkoutSession, SetData, ExerciseLog } from './storage';
 
 export const setVolume = (s: SetData) => (Number(s.weight) || 0) * (Number(s.reps) || 0);
 
@@ -107,3 +108,49 @@ export const fmtRelativeShort = (iso: string) => {
   if (d < 30) return `Il y a ${Math.floor(d / 7)}sem`;
   return fmtDate(iso);
 };
+
+export function estimateRemainingSec(
+  workout: Workout,
+  logs: Record<string, ExerciseLog>,
+  currentStep: number,
+  defaultRest: number,
+): number {
+  const SET_EXEC_SEC = 45;
+  let total = 0;
+
+  workout.exercises.forEach((ex, i) => {
+    if (i < currentStep) return;
+    const sets = logs[ex.id]?.sets || [];
+    const setsLeft = sets.length > 0 ? sets.filter(s => !s.isComplete).length : ex.sets;
+    total += setsLeft * (SET_EXEC_SEC + (ex.rest ?? defaultRest));
+  });
+
+  if (workout.cooldown && currentStep <= workout.exercises.length) total += 60;
+  return total;
+}
+
+export function sessionPRs(
+  sessionLogs: Record<string, ExerciseLog>,
+  pastSessions: WorkoutSession[],
+): Array<{ exerciseId: string; setIndex: number; type: 'volume' | 'weight'; weight: string; reps: string }> {
+  const prs: Array<{ exerciseId: string; setIndex: number; type: 'volume' | 'weight'; weight: string; reps: string }> = [];
+
+  Object.entries(sessionLogs).forEach(([exerciseId, log]) => {
+    const pastHistory = exerciseHistorySets(pastSessions, exerciseId);
+    const acceptedThisSession: SetData[] = [];
+
+    log.sets.forEach((set, setIndex) => {
+      if (!set.isComplete || Number(set.weight) <= 0 || Number(set.reps) <= 0) return;
+      const history = [...pastHistory, ...acceptedThisSession];
+      if (isVolumePR(set, history)) {
+        prs.push({ exerciseId, setIndex, type: 'volume', weight: set.weight, reps: set.reps });
+      }
+      if (isWeightPR(set, history)) {
+        prs.push({ exerciseId, setIndex, type: 'weight', weight: set.weight, reps: set.reps });
+      }
+      acceptedThisSession.push(set);
+    });
+  });
+
+  return prs;
+}

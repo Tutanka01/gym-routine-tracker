@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { ChevronLeft, Trophy, TrendingUp, TrendingDown, Search, Calendar, Trash2 } from "lucide-react";
+import { ChevronLeft, Trophy, TrendingUp, TrendingDown, Search, Calendar, Trash2, MessageSquare } from "lucide-react";
 import { storage, WorkoutSession, ExerciseLog } from "../lib/storage";
 import { workouts, allExercises, findExercise } from "../data";
 import { bestSetEver, exerciseProgression, fmtDate, fmtRelativeShort, fmtVol, sessionVolume, setVolume, topSet } from "../lib/stats";
@@ -251,7 +251,7 @@ export function History({ onClose }: Props) {
                     const top = topSet(log.sets);
                     return (
                       <div key={exId} className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.05]">
-                        <div className="font-bold text-sm mb-2 text-[#C0D0F0]">{ex.name}</div>
+                        <div className="font-bold text-sm mb-2 text-[#C0D0F0]">{log.displayName || ex.name}</div>
                         <div className="grid grid-cols-3 gap-1.5">
                           {log.sets.map((set, i) => (
                             <div
@@ -264,7 +264,10 @@ export function History({ onClose }: Props) {
                                   : "bg-white/[0.02] text-slate-600 border border-white/[0.04]"
                               }`}
                             >
-                              {set.weight || "—"}<span className="text-slate-700 mx-0.5">×</span>{set.reps || "—"}
+                              <span className="inline-flex items-center justify-center gap-1">
+                                {set.weight || "—"}<span className="text-slate-700 mx-0.5">×</span>{set.reps || "—"}
+                                {set.note && <MessageSquare className="w-3 h-3" />}
+                              </span>
                             </div>
                           ))}
                         </div>

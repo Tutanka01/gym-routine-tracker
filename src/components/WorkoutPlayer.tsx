@@ -1,10 +1,17 @@
 import { useState, useEffect, useMemo, useRef } from "react";
+import type { PointerEvent } from "react";
 import { Workout } from "../data";
 import { motion, AnimatePresence } from "motion/react";
-import { Check, ChevronLeft, ChevronRight, Activity, Flame, Trophy, CheckCircle2, Zap, RotateCcw } from "lucide-react";
+import { Check, ChevronDown, ChevronLeft, ChevronRight, Activity, Flame, Trophy, RotateCcw, MessageSquare, Shuffle } from "lucide-react";
 import { storage, ExerciseLog, SetData } from "../lib/storage";
 import { RestTimer } from "./RestTimer";
 import { setVolume, isVolumePR, isWeightPR, exerciseHistorySets, fmtVol } from "../lib/stats";
+import { SessionTimer } from "./SessionTimer";
+import { WorkoutRoadmap } from "./WorkoutRoadmap";
+import { NextExercisePreview } from "./NextExercisePreview";
+import { SetNoteSheet } from "./SetNoteSheet";
+import { ExerciseSwapSheet } from "./ExerciseSwapSheet";
+import { FinishSummary } from "./FinishSummary";
 
 interface WorkoutPlayerProps {
   workout: Workout;
@@ -97,11 +104,15 @@ export function WorkoutPlayer({ workout, onClose, resumeFromActive }: WorkoutPla
   const [startedAt] = useState(() => new Date().toISOString());
   const [hydrated, setHydrated] = useState(false);
   const [showAbandonConfirm, setShowAbandonConfirm] = useState(false);
+  const [showRoadmap, setShowRoadmap] = useState(false);
+  const [noteTarget, setNoteTarget] = useState<{ exerciseId: string; setIndex: number } | null>(null);
+  const [showSwapSheet, setShowSwapSheet] = useState(false);
 
   const settings = useMemo(() => storage.getSettings(), []);
   const allSessions = useMemo(() => storage.getSessions(), []);
 
   const sessionLogsRef = useRef(sessionLogs);
+  const longPressTimerRef = useRef<number | null>(null);
   useEffect(() => { sessionLogsRef.current = sessionLogs; }, [sessionLogs]);
 
   useEffect(() => {
@@ -113,6 +124,7 @@ export function WorkoutPlayer({ workout, onClose, resumeFromActive }: WorkoutPla
         const existing = active.logs[ex.id]?.sets || [];
         const baseSets = fresh[ex.id].sets;
         merged[ex.id] = {
+          displayName: active.logs[ex.id]?.displayName,
           sets: baseSets.map((s, i) => existing[i] || s),
         };
       });
@@ -166,13 +178,26 @@ export function WorkoutPlayer({ workout, onClose, resumeFromActive }: WorkoutPla
     if (currentExercise) setRestDuration(currentExercise.rest ?? settings.defaultRest);
   }, [currentExercise, settings.defaultRest]);
 
-  const updateSet = (exerciseId: string, setIndex: number, field: 'weight' | 'reps', value: string) => {
+  const updateSet = (exerciseId: string, setIndex: number, field: 'weight' | 'reps' | 'note', value: string) => {
     setSessionLogs(prev => {
-      const updated = { ...prev, [exerciseId]: { sets: [...prev[exerciseId].sets] } };
+      const updated = { ...prev, [exerciseId]: { ...prev[exerciseId], sets: [...prev[exerciseId].sets] } };
       updated[exerciseId].sets[setIndex] = { ...updated[exerciseId].sets[setIndex], [field]: value };
       return updated;
     });
   };
+
+  const updateExerciseDisplayName = (exerciseId: string, displayName: string) => {
+    setSessionLogs(prev => ({
+      ...prev,
+      [exerciseId]: {
+        ...prev[exerciseId],
+        displayName: displayName === workout.exercises.find(ex => ex.id === exerciseId)?.name ? undefined : displayName,
+      },
+    }));
+  };
+
+  const displayNameFor = (exerciseId: string) =>
+    sessionLogs[exerciseId]?.displayName || workout.exercises.find(ex => ex.id === exerciseId)?.name || exerciseId;
 
   const handleSetBlur = (exerciseId: string, setIndex: number) => {
     setTimeout(() => {
@@ -199,7 +224,7 @@ export function WorkoutPlayer({ workout, onClose, resumeFromActive }: WorkoutPla
     let prKey = '';
 
     setSessionLogs(prev => {
-      const updated = { ...prev, [exerciseId]: { sets: [...prev[exerciseId].sets] } };
+      const updated = { ...prev, [exerciseId]: { ...prev[exerciseId], sets: [...prev[exerciseId].sets] } };
       const set = { ...updated[exerciseId].sets[setIndex] };
       set.isComplete = becomingComplete;
 
@@ -233,7 +258,7 @@ export function WorkoutPlayer({ workout, onClose, resumeFromActive }: WorkoutPla
     const last = lastWorkoutLogs?.[exerciseId];
     if (!last) return;
     setSessionLogs(prev => {
-      const updated = { ...prev, [exerciseId]: { sets: [...prev[exerciseId].sets] } };
+      const updated = { ...prev, [exerciseId]: { ...prev[exerciseId], sets: [...prev[exerciseId].sets] } };
       updated[exerciseId].sets = updated[exerciseId].sets.map((s, i) => {
         if (s.isComplete) return s;
         const prior = last.sets[i];
@@ -245,6 +270,21 @@ export function WorkoutPlayer({ workout, onClose, resumeFromActive }: WorkoutPla
   };
 
   const workoutTitle = workout.name.split("—").pop()?.trim() || workout.name;
+
+  const startSetLongPress = (event: PointerEvent<HTMLElement>, exerciseId: string, setIndex: number) => {
+    if ((event.target as HTMLElement).closest("button,input")) return;
+    if (longPressTimerRef.current) window.clearTimeout(longPressTimerRef.current);
+    longPressTimerRef.current = window.setTimeout(() => {
+      setNoteTarget({ exerciseId, setIndex });
+      longPressTimerRef.current = null;
+    }, 500);
+  };
+
+  const cancelSetLongPress = () => {
+    if (!longPressTimerRef.current) return;
+    window.clearTimeout(longPressTimerRef.current);
+    longPressTimerRef.current = null;
+  };
 
   const renderSets = () => {
     if (!currentExercise || !sessionLogs[currentExercise.id]) return null;
@@ -263,6 +303,8 @@ export function WorkoutPlayer({ workout, onClose, resumeFromActive }: WorkoutPla
           const candidate: SetData = { weight: set.weight, reps: set.reps, isComplete: true };
           const isPR = set.isComplete && Number(set.weight) > 0 && allHistory.length > 0 &&
             (isVolumePR(candidate, allHistory) || isWeightPR(candidate, allHistory));
+          const wouldBePR = !set.isComplete && Number(set.weight) > 0 && Number(set.reps) > 0 &&
+            (isVolumePR(candidate, allHistory) || isWeightPR(candidate, allHistory));
           const setKey = `${currentExercise.id}-${idx}`;
           const flashing = prFlashKey?.startsWith(setKey);
 
@@ -270,6 +312,10 @@ export function WorkoutPlayer({ workout, onClose, resumeFromActive }: WorkoutPla
             <motion.div
               key={idx}
               layout
+              onPointerDown={e => startSetLongPress(e, currentExercise.id, idx)}
+              onPointerUp={cancelSetLongPress}
+              onPointerCancel={cancelSetLongPress}
+              onPointerLeave={cancelSetLongPress}
               className={`flex items-center gap-2 px-2 py-1.5 rounded-xl transition-colors ${
                 set.isComplete
                   ? isPR
@@ -281,7 +327,10 @@ export function WorkoutPlayer({ workout, onClose, resumeFromActive }: WorkoutPla
               <span className={`w-5 text-center text-xs font-mono font-bold shrink-0 ${
                 set.isComplete ? (isPR ? "text-[var(--color-acid)]" : "text-[var(--color-signal)]") : "text-slate-600"
               }`}>
-                {idx + 1}
+                <span className="inline-flex items-center justify-center gap-0.5">
+                  {idx + 1}
+                  {set.note && <MessageSquare className="w-3 h-3" />}
+                </span>
               </span>
 
               <StepperInput
@@ -307,6 +356,20 @@ export function WorkoutPlayer({ workout, onClose, resumeFromActive }: WorkoutPla
                 inputCls="w-8"
                 btnCls="w-6"
               />
+
+              <AnimatePresence>
+                {wouldBePR && (
+                  <motion.span
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    transition={{ duration: 0.15 }}
+                    className="shrink-0 rounded-lg bg-[var(--color-signal)]/10 border border-[var(--color-signal)]/20 px-2 py-1 text-[10px] font-bold text-[var(--color-signal)]"
+                  >
+                    + PR
+                  </motion.span>
+                )}
+              </AnimatePresence>
 
               {pastSet?.weight && (
                 <span className="flex-1 text-[10px] font-mono text-slate-700 text-right pr-1 min-w-0 truncate">
@@ -358,13 +421,16 @@ export function WorkoutPlayer({ workout, onClose, resumeFromActive }: WorkoutPla
         >
           <ChevronLeft className="w-7 h-7" />
         </button>
-        <div className="text-center">
-          <div className="font-semibold text-sm text-slate-300 leading-tight">{workoutTitle}</div>
+        <button type="button" onClick={() => setShowRoadmap(true)} className="text-center min-w-0 px-2 active:scale-[0.99] transition">
+          <div className="font-semibold text-sm text-slate-300 leading-tight flex items-center justify-center gap-1">
+            <span className="truncate">{workoutTitle}</span>
+            <ChevronDown className="w-3.5 h-3.5 text-slate-600 shrink-0" />
+          </div>
           <div className="text-[11px] font-mono tnum text-slate-600 mt-0.5">
             {completedSets}/{totalSets} sets · {fmtVol(liveVolume)} kg
           </div>
-        </div>
-        <div className="w-11" />
+        </button>
+        <SessionTimer startedAt={startedAt} />
       </div>
 
       {/* Progress segments */}
@@ -418,6 +484,13 @@ export function WorkoutPlayer({ workout, onClose, resumeFromActive }: WorkoutPla
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
               transition={{ duration: 0.22 }}
+              drag="x"
+              dragConstraints={{ left: 0, right: 0 }}
+              dragElastic={0.2}
+              onDragEnd={(_, info) => {
+                if (info.offset.x < -80 || info.velocity.x < -500) nextStep();
+                else if (info.offset.x > 80 || info.velocity.x > 500) prevStep();
+              }}
               className="flex flex-col pb-10"
             >
               <div className="flex items-center justify-between mt-5 mb-2">
@@ -431,11 +504,19 @@ export function WorkoutPlayer({ workout, onClose, resumeFromActive }: WorkoutPla
                   <span className="text-[11px] px-2.5 py-1 bg-white/[0.05] text-slate-400 rounded-lg border border-white/[0.07] font-medium">
                     RIR {currentExercise.rir}
                   </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowSwapSheet(true)}
+                    className="w-7 h-7 rounded-lg bg-white/[0.05] border border-white/[0.07] text-slate-500 flex items-center justify-center active:scale-95 transition"
+                    aria-label="Changer d'exercice"
+                  >
+                    <Shuffle className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </div>
 
               <h2 className="font-display font-black uppercase text-[#C0D0F0] leading-none mb-3" style={{ fontSize: '44px', letterSpacing: '-0.01em' }}>
-                {currentExercise.name}
+                {displayNameFor(currentExercise.id)}
               </h2>
 
               <div className="flex items-center gap-3 text-xs text-slate-500">
@@ -451,6 +532,13 @@ export function WorkoutPlayer({ workout, onClose, resumeFromActive }: WorkoutPla
               )}
 
               {renderSets()}
+              <NextExercisePreview
+                workout={workout}
+                currentStep={step}
+                defaultRest={settings.defaultRest}
+                displayNameFor={displayNameFor}
+                onJump={target => { setIsRestTimerActive(false); setStep(target); }}
+              />
             </motion.div>
           )}
 
@@ -476,52 +564,16 @@ export function WorkoutPlayer({ workout, onClose, resumeFromActive }: WorkoutPla
 
           {/* Finish */}
           {step === finishStep && (
-            <motion.div
-              key="finish"
-              initial={{ opacity: 0, scale: 0.97 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.28 }}
-              className="flex flex-col items-center justify-center text-center pb-20 pt-10"
-            >
-              <motion.div
-                initial={{ scale: 0.6, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ delay: 0.1, type: "spring", stiffness: 240, damping: 18 }}
-                className="w-24 h-24 bg-signal-soft rounded-full flex items-center justify-center mb-7"
-                style={{ boxShadow: '0 0 40px rgba(13,223,184,0.2)' }}
-              >
-                <CheckCircle2 className="w-11 h-11 text-[var(--color-signal)]" strokeWidth={1.6} />
-              </motion.div>
-
-              <motion.h2
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.18 }}
-                className="font-display font-black text-[#C0D0F0] mb-1 uppercase"
-                style={{ fontSize: '64px', lineHeight: 0.85 }}
-              >
-                BRAVO
-              </motion.h2>
-              <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.26 }}
-                className="text-slate-500 text-sm mb-8"
-              >
-                Séance enregistrée.
-              </motion.p>
-
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.32 }}
-                className="grid grid-cols-3 gap-3 w-full px-2 max-w-sm"
-              >
-                <StatCard label="Sets" value={`${completedSets}`} />
-                <StatCard label="Volume" value={fmtVol(liveVolume)} unit="kg" />
-                <StatCard label="Durée" value={`${Math.max(1, Math.floor((Date.now() - new Date(startedAt).getTime()) / 60000))}'`} />
-              </motion.div>
-            </motion.div>
+            <FinishSummary
+              workout={workout}
+              sessionLogs={sessionLogs}
+              startedAt={startedAt}
+              pastSessions={allSessions}
+              completedSets={completedSets}
+              liveVolume={liveVolume}
+              displayNameFor={displayNameFor}
+              onFinish={finishWorkout}
+            />
           )}
         </AnimatePresence>
       </div>
@@ -536,6 +588,7 @@ export function WorkoutPlayer({ workout, onClose, resumeFromActive }: WorkoutPla
       />
 
       {/* Bottom bar */}
+      {step < finishStep && (
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-[var(--color-void-0)] via-[var(--color-void-0)]/90 to-transparent max-w-md mx-auto z-20 pointer-events-none">
         <div className="flex gap-3 pointer-events-auto">
           {step > -1 && step < finishStep && (
@@ -547,27 +600,49 @@ export function WorkoutPlayer({ workout, onClose, resumeFromActive }: WorkoutPla
             </button>
           )}
 
-          {step < finishStep ? (
-            <button
-              onClick={nextStep}
-              className="flex-1 text-black text-base font-bold py-4 px-6 rounded-xl active:scale-[0.98] transition-transform flex items-center justify-center gap-2"
-              style={{ background: 'var(--color-signal)', boxShadow: '0 6px 20px rgba(13,223,184,0.25)' }}
-            >
-              {step === -1 ? "Démarrer" : "Exercice suivant"}
-              <ChevronRight className="w-5 h-5" />
-            </button>
-          ) : (
-            <button
-              onClick={finishWorkout}
-              className="w-full text-black font-bold py-4 rounded-xl text-base active:scale-[0.98] transition-transform flex items-center justify-center gap-2"
-              style={{ background: 'var(--color-signal)', boxShadow: '0 6px 24px rgba(13,223,184,0.3)' }}
-            >
-              <Zap className="w-5 h-5" strokeWidth={2.5} />
-              Enregistrer la séance
-            </button>
-          )}
+          <button
+            onClick={nextStep}
+            className="flex-1 text-black text-base font-bold py-4 px-6 rounded-xl active:scale-[0.98] transition-transform flex items-center justify-center gap-2"
+            style={{ background: 'var(--color-signal)', boxShadow: '0 6px 20px rgba(13,223,184,0.25)' }}
+          >
+            {step === -1 ? "Démarrer" : "Exercice suivant"}
+            <ChevronRight className="w-5 h-5" />
+          </button>
         </div>
       </div>
+      )}
+
+      {showRoadmap && (
+        <WorkoutRoadmap
+          workout={workout}
+          sessionLogs={sessionLogs}
+          currentStep={step}
+          startedAt={startedAt}
+          defaultRest={settings.defaultRest}
+          displayNameFor={displayNameFor}
+          onJump={target => { setIsRestTimerActive(false); setStep(target); }}
+          onClose={() => setShowRoadmap(false)}
+          onFinish={() => setStep(finishStep)}
+          onAbandon={doAbandon}
+        />
+      )}
+
+      <SetNoteSheet
+        isOpen={!!noteTarget}
+        initialNote={noteTarget ? sessionLogs[noteTarget.exerciseId]?.sets[noteTarget.setIndex]?.note || "" : ""}
+        setLabel={noteTarget ? `Set ${noteTarget.setIndex + 1}` : "Set"}
+        onClose={() => setNoteTarget(null)}
+        onSave={note => noteTarget && updateSet(noteTarget.exerciseId, noteTarget.setIndex, "note", note)}
+        onClear={() => noteTarget && updateSet(noteTarget.exerciseId, noteTarget.setIndex, "note", "")}
+      />
+
+      <ExerciseSwapSheet
+        isOpen={showSwapSheet}
+        exercise={currentExercise}
+        selectedName={currentExercise ? displayNameFor(currentExercise.id) : ""}
+        onClose={() => setShowSwapSheet(false)}
+        onSelect={name => currentExercise && updateExerciseDisplayName(currentExercise.id, name)}
+      />
 
       {/* Abandon confirmation sheet */}
       <AnimatePresence>
