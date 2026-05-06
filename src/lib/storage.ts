@@ -11,15 +11,22 @@ const KEYS = {
   settings: 'gym.settings.v1',
 } as const;
 
+export type SetType = 'normal' | 'drop' | 'cluster' | 'superset';
+
 export type SetData = {
   weight: string;
   reps: string;
   isComplete: boolean;
   ts?: number;
   note?: string;
+  rirActual?: number;
+  setType?: SetType;
+  supersetWith?: string;
 };
 
 export type ExerciseLog = { sets: SetData[]; displayName?: string };
+
+export type Readiness = { sleep: number; energy: number };
 
 export type WorkoutSession = {
   v: number;
@@ -30,6 +37,7 @@ export type WorkoutSession = {
   logs: Record<string, ExerciseLog>;
   durationSec?: number;
   totalVolume?: number;
+  readiness?: Readiness;
 };
 
 export type ActiveSession = {
@@ -38,6 +46,7 @@ export type ActiveSession = {
   startedAt: string;
   step: number;
   logs: Record<string, ExerciseLog>;
+  readiness?: Readiness;
 };
 
 export type SundayCheckin = {

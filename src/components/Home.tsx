@@ -1,20 +1,23 @@
-import { weeklySchedule, getToday, workouts } from "../data";
-import { Dumbbell, ChevronRight, CheckCircle2, ClipboardCheck, BarChart3, Settings as SettingsIcon, Flame, Play } from "lucide-react";
+import { weeklySchedule, getToday, workouts, allExercises } from "../data";
+import { Dumbbell, ChevronRight, CheckCircle2, ClipboardCheck, BarChart3, Settings as SettingsIcon, Flame, Play, Activity, Calculator } from "lucide-react";
 import { motion } from "motion/react";
 import { storage, ActiveSession } from "../lib/storage";
 import { useState, useEffect, useMemo, type ReactNode } from "react";
 import { computeStreak, fmtVol, sessionVolume, sessionsThisWeek } from "../lib/stats";
+import { weeklyMuscleGroupSets, getVolumeStatus, VOLUME_LANDMARKS } from "../lib/intelligence";
 
 interface HomeProps {
   onStartWorkout: (workoutId: string, opts?: { resume?: boolean }) => void;
   onStartCheckin: () => void;
   onOpenHistory: () => void;
   onOpenSettings: () => void;
+  onOpenVolumeDashboard: () => void;
+  onOpenPlateCalculator: () => void;
 }
 
 const workoutSubtitle = (name: string) => name.split("—").pop()?.trim() || name;
 
-export function Home({ onStartWorkout, onStartCheckin, onOpenHistory, onOpenSettings }: HomeProps) {
+export function Home({ onStartWorkout, onStartCheckin, onOpenHistory, onOpenSettings, onOpenVolumeDashboard, onOpenPlateCalculator }: HomeProps) {
   const today = getToday();
   const todayWorkout = today.workoutId ? workouts[today.workoutId] : null;
   const isSundayCheckin = today.day === "Dimanche";
@@ -25,6 +28,7 @@ export function Home({ onStartWorkout, onStartCheckin, onOpenHistory, onOpenSett
   useEffect(() => { setActive(storage.getActiveSession()); }, [tick]);
 
   const sessions = useMemo(() => storage.getSessions(), [tick]);
+  const exercises = useMemo(() => allExercises(), []);
 
   const stats = useMemo(() => {
     const week = sessionsThisWeek(sessions);
@@ -36,6 +40,14 @@ export function Home({ onStartWorkout, onStartCheckin, onOpenHistory, onOpenSett
       streak: computeStreak(sessions),
     };
   }, [sessions]);
+
+  const volumeAlerts = useMemo(() => {
+    const mgSets = weeklyMuscleGroupSets(sessions, exercises);
+    return Object.entries(VOLUME_LANDMARKS)
+      .map(([key, lm]) => ({ key, label: lm.label, sets: mgSets[key] ?? 0, status: getVolumeStatus(mgSets[key] ?? 0, key) }))
+      .filter(r => r.status === 'below-mev' && r.sets > 0 || r.status === 'above-mrv')
+      .slice(0, 2);
+  }, [sessions, exercises]);
 
   const discardActive = () => {
     if (!confirm("Abandonner la séance en cours ?")) return;
@@ -60,6 +72,20 @@ export function Home({ onStartWorkout, onStartCheckin, onOpenHistory, onOpenSett
         </div>
         <div className="flex items-center gap-2 mb-1.5">
           <button
+            onClick={onOpenVolumeDashboard}
+            className="w-10 h-10 rounded-xl bg-[var(--color-void-2)] border border-white/[0.06] flex items-center justify-center text-slate-400 active:bg-[var(--color-void-3)] transition"
+            title="Volume MEV/MAV/MRV"
+          >
+            <Activity className="w-4 h-4" />
+          </button>
+          <button
+            onClick={onOpenPlateCalculator}
+            className="w-10 h-10 rounded-xl bg-[var(--color-void-2)] border border-white/[0.06] flex items-center justify-center text-slate-400 active:bg-[var(--color-void-3)] transition"
+            title="Calculateur disques"
+          >
+            <Calculator className="w-4 h-4" />
+          </button>
+          <button
             onClick={onOpenHistory}
             className="w-10 h-10 rounded-xl bg-[var(--color-void-2)] border border-white/[0.06] flex items-center justify-center text-slate-400 active:bg-[var(--color-void-3)] transition"
           >
@@ -75,11 +101,33 @@ export function Home({ onStartWorkout, onStartCheckin, onOpenHistory, onOpenSett
       </header>
 
       {/* Stats strip */}
-      <div className="grid grid-cols-3 gap-2 mb-6">
+      <div className="grid grid-cols-3 gap-2 mb-3">
         <StatPill label="Séances/sem" value={`${stats.week}`} />
         <StatPill label="Volume 7j" value={fmtVol(stats.weekVolume)} unit="kg" />
         <StatPill label="Streak" value={`${stats.streak}`} unit={stats.streak === 1 ? "j" : "j"} tone={stats.streak >= 3 ? "flame" : undefined} />
       </div>
+
+      {/* Volume alerts (A1) */}
+      {volumeAlerts.length > 0 && (
+        <motion.button
+          initial={{ opacity: 0, y: -4 }}
+          animate={{ opacity: 1, y: 0 }}
+          onClick={onOpenVolumeDashboard}
+          className="w-full mb-4 flex items-center gap-3 px-3 py-2.5 rounded-xl bg-[var(--color-void-1)] border border-white/[0.05] text-left active:scale-[0.99] transition"
+        >
+          <Activity className="w-4 h-4 text-[var(--color-acid)] shrink-0" />
+          <div className="flex-1 min-w-0">
+            <span className="text-[11px] text-slate-400">
+              {volumeAlerts.map(a =>
+                a.status === 'above-mrv'
+                  ? `${a.label} sur-MRV`
+                  : `${a.label} sous-MEV`
+              ).join(' · ')}
+            </span>
+          </div>
+          <span className="text-[10px] text-slate-600 shrink-0">Voir →</span>
+        </motion.button>
+      )}
 
       {/* Resume banner */}
       {active && activeWorkout && (

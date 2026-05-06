@@ -91,6 +91,33 @@ input[type=number] { -moz-appearance: textfield; }
 /* Hairline divider */
 .hairline { border-top: 1px solid rgba(100,150,255,0.07); }
 
+/* Voice listening pulse */
+@keyframes mic-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(13,223,184,0.4); }
+  50%       { box-shadow: 0 0 0 6px rgba(13,223,184,0); }
+}
+.mic-pulse { animation: mic-pulse 1.2s ease-in-out infinite; }
+
+/* Bench mode fade */
+@keyframes bench-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Volume bar grow */
+@keyframes bar-grow {
+  from { width: 0; }
+  to   { width: var(--target-width); }
+}
+
+/* RIR picker bounce */
+@keyframes dot-bounce {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+.dot-bounce { animation: dot-bounce 0.2s ease-out; }
+
 /* Sparkline grid */
 .spark-grid {
   background-image:
