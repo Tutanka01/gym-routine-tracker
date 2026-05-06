@@ -1,5 +1,17 @@
 import { Exercise } from '../data';
-import { WorkoutSession } from './storage';
+import { SetData, WorkoutSession } from './storage';
+
+const roundToIncrement = (value: number, increment: number) =>
+  Math.round(value / increment) * increment;
+
+const parseRepRange = (repRange: string): { min: number; max: number; label: string } => {
+  const nums = repRange.match(/\d+/g)?.map(Number) ?? [];
+  const min = nums[0] ?? 0;
+  const max = nums[1] ?? min;
+  return { min, max, label: min && max ? (min === max ? `${min}` : `${min}-${max}`) : repRange };
+};
+
+const formatKg = (value: number) => Number(value.toFixed(2));
 
 // ── A2: Epley estimated 1RM ───────────────────────────────────────────────────
 export const calcE1RM = (weight: number, reps: number): number => {
@@ -160,8 +172,10 @@ export const autoProgression = (
     lastSets[0],
   );
 
-  const parts = repRange.split('-').map(Number);
-  const maxReps = parts[1] ?? parts[0];
+  const { max: maxReps } = parseRepRange(repRange);
+  if (maxReps <= 0) {
+    return { action: 'maintain', reason: 'Maintenir le poids actuel', urgency: 'info' };
+  }
 
   // Two consecutive drops → deload
   if (prog.length >= 3) {
@@ -201,6 +215,117 @@ export const autoProgression = (
 };
 
 // ── A3: RIR consistency check ─────────────────────────────────────────────────
+export interface SessionTarget {
+  targetWeight: number | null;
+  reps: string;
+  action: ProgressionAction | 'learn';
+  reason: string;
+  deltaKg: number | null;
+  lastWeight: number | null;
+  readinessAdjusted: boolean;
+}
+
+export const getSessionTarget = (
+  sessions: WorkoutSession[],
+  exId: string,
+  repRange: string,
+  isCompound: boolean,
+  readiness = 1,
+): SessionTarget => {
+  const reps = parseRepRange(repRange).label;
+  const sessionsForEx = sessions
+    .filter(s => s.logs[exId])
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+  const lastSets = sessionsForEx[0]?.logs[exId]?.sets.filter(
+    s => s.isComplete && Number(s.weight) > 0 && Number(s.reps) > 0,
+  ) ?? [];
+
+  if (!lastSets.length) {
+    return {
+      targetWeight: null,
+      reps,
+      action: 'learn',
+      reason: 'Premiere seance: trouve une charge propre dans la plage cible.',
+      deltaKg: null,
+      lastWeight: null,
+      readinessAdjusted: false,
+    };
+  }
+
+  const topSet = lastSets.reduce(
+    (top, s) => Number(s.weight) * Number(s.reps) > Number(top.weight) * Number(top.reps) ? s : top,
+    lastSets[0],
+  );
+  const lastWeight = Number(topSet.weight);
+  const suggestion = autoProgression(sessions, exId, repRange, isCompound);
+  const suggestedWeight = suggestion?.nextWeight ?? lastWeight;
+  const adjustedWeight = readiness < 1 ? suggestedWeight * readiness : suggestedWeight;
+  const targetWeight = formatKg(Math.max(0, roundToIncrement(adjustedWeight, 1.25)));
+
+  return {
+    targetWeight,
+    reps,
+    action: suggestion?.action ?? 'maintain',
+    reason: readiness < 1
+      ? `${suggestion?.reason ?? 'Maintenir le poids actuel'}; ajuste a la forme du jour`
+      : suggestion?.reason ?? 'Maintenir le poids actuel',
+    deltaKg: formatKg(targetWeight - lastWeight),
+    lastWeight,
+    readinessAdjusted: readiness < 1,
+  };
+};
+
+export interface RepsHint {
+  placeholder: string;
+  label: string;
+  note?: string;
+  tone: 'normal' | 'up' | 'down';
+}
+
+export const getNextSetRepsHint = (
+  sets: SetData[],
+  setIndex: number,
+  repRange: string,
+): RepsHint => {
+  const range = parseRepRange(repRange);
+  const normal = {
+    placeholder: range.max ? String(range.max) : range.label,
+    label: range.label,
+    tone: 'normal' as const,
+  };
+
+  const previous = sets
+    .slice(0, setIndex)
+    .reverse()
+    .find(s => s.isComplete && Number(s.reps) > 0 && s.rirActual !== undefined);
+
+  if (!previous || previous.rirActual === undefined || !range.min || !range.max) return normal;
+
+  const previousReps = Number(previous.reps);
+  if (previous.rirActual === 0) {
+    const target = Math.max(range.min, previousReps - (previousReps - range.min >= 2 ? 2 : 1));
+    return {
+      placeholder: String(target),
+      label: `${target} reps`,
+      note: 'RIR 0: reduis un peu',
+      tone: 'down',
+    };
+  }
+
+  if (previous.rirActual >= 4) {
+    const target = Math.min(range.max, previousReps + (range.max - previousReps >= 2 ? 2 : 1));
+    return {
+      placeholder: String(target),
+      label: `${target} reps`,
+      note: 'RIR 4+: pousse un peu',
+      tone: 'up',
+    };
+  }
+
+  return normal;
+};
+
 export const rirConsistencyWarning = (
   declaredRir: number,
   currentReps: number,

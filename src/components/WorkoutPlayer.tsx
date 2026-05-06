@@ -18,12 +18,14 @@ import { ExerciseSwapSheet } from "./ExerciseSwapSheet";
 import { FinishSummary } from "./FinishSummary";
 import { ReadinessGate } from "./ReadinessGate";
 import { BenchMode } from "./BenchMode";
+import { ExerciseCue } from "./ExerciseCue";
 import {
   autoProgression,
   detectPlateau,
+  getNextSetRepsHint,
+  getSessionTarget,
   readinessFactor,
   rirConsistencyWarning,
-  ProgressionSuggestion,
 } from "../lib/intelligence";
 
 interface WorkoutPlayerProps {
@@ -112,8 +114,6 @@ export function WorkoutPlayer({ workout, onClose, resumeFromActive }: WorkoutPla
   const [dismissedPlateaus, setDismissedPlateaus] = useState<Set<string>>(new Set());
 
   // A4 — Progression suggestion
-  const [progressionSuggestion, setProgressionSuggestion] = useState<ProgressionSuggestion | null>(null);
-
   // B6 — Set type
   const [setTypeMenu, setSetTypeMenu] = useState<{ exerciseId: string; setIndex: number } | null>(null);
 
@@ -164,16 +164,6 @@ export function WorkoutPlayer({ workout, onClose, resumeFromActive }: WorkoutPla
     if (detectPlateau(allSessions, ex.id)) {
       setPlateauExId(ex.id);
     }
-    // Compute progression for previous exercise when stepping forward
-    if (step > 0) {
-      const prevEx = workout.exercises[step - 1];
-      if (prevEx) {
-        const sug = autoProgression(allSessions, prevEx.id, prevEx.reps, prevEx.isCompound ?? false);
-        setProgressionSuggestion(sug && sug.action !== 'maintain' ? sug : null);
-      }
-    } else {
-      setProgressionSuggestion(null);
-    }
   }, [step, workout.exercises, allSessions, dismissedPlateaus]);
 
   const liveVolume = useMemo(
@@ -210,6 +200,16 @@ export function WorkoutPlayer({ workout, onClose, resumeFromActive }: WorkoutPla
   const nextExercise = step >= 0 && step + 1 < workout.exercises.length ? workout.exercises[step + 1] : null;
 
   const readinessFact = readiness ? readinessFactor(readiness.sleep, readiness.energy) : 1.0;
+  const sessionTargets = useMemo(
+    () => Object.fromEntries(
+      workout.exercises.map(ex => [
+        ex.id,
+        getSessionTarget(allSessions, ex.id, ex.reps, ex.isCompound ?? false, readinessFact),
+      ]),
+    ),
+    [workout.exercises, allSessions, readinessFact],
+  );
+  const currentTarget = currentExercise ? sessionTargets[currentExercise.id] : null;
 
   useEffect(() => {
     if (currentExercise) setRestDuration(currentExercise.rest ?? settings.defaultRest);
@@ -288,13 +288,18 @@ export function WorkoutPlayer({ workout, onClose, resumeFromActive }: WorkoutPla
   const prefillExercise = (exerciseId: string) => {
     const last = lastWorkoutLogs?.[exerciseId];
     if (!last) return;
+    const target = sessionTargets[exerciseId];
     setSessionLogs(prev => {
       const updated = { ...prev, [exerciseId]: { ...prev[exerciseId], sets: [...prev[exerciseId].sets] } };
       updated[exerciseId].sets = updated[exerciseId].sets.map((s, i) => {
         if (s.isComplete) return s;
         const prior = last.sets[i];
         if (!prior) return s;
-        return { ...s, weight: s.weight || prior.weight, reps: s.reps || prior.reps };
+        return {
+          ...s,
+          weight: s.weight || (target?.targetWeight ? String(target.targetWeight) : prior.weight),
+          reps: s.reps || prior.reps,
+        };
       });
       return updated;
     });
@@ -372,17 +377,20 @@ export function WorkoutPlayer({ workout, onClose, resumeFromActive }: WorkoutPla
     const pastLogs = lastWorkoutLogs?.[currentExercise.id]?.sets || [];
     const exHistory = exerciseHistorySets(allSessions, currentExercise.id);
     const allSetsComplete = logs.every(s => s.isComplete && Number(s.weight) > 0);
+    const firstIncompleteIndex = logs.findIndex(s => !s.isComplete);
+    const cueSetIndex = firstIncompleteIndex === -1 ? Math.max(0, logs.length - 1) : firstIncompleteIndex;
+    const cueRepsHint = getNextSetRepsHint(logs, cueSetIndex, currentExercise.reps);
+    const cueIsCompact = logs.some(s => s.isComplete);
 
     // Compute RIR consistency warning for last completed set
     let rirWarning: string | null = null;
     if (currentExercise.rir && currentExercise.rir !== '-') {
-      const targetRir = parseInt(currentExercise.rir, 10) || 2;
       const lastComplete = logs.slice().reverse().find(s => s.isComplete);
       if (lastComplete && pastLogs.length > 0) {
         const prevSet = pastLogs.find((_s, i) => logs.indexOf(lastComplete) === i);
-        if (prevSet) {
+        if (prevSet && lastComplete.rirActual !== undefined) {
           rirWarning = rirConsistencyWarning(
-            targetRir,
+            lastComplete.rirActual,
             Number(lastComplete.reps) || 0,
             Number(prevSet.reps) || 0,
             lastComplete.weight === prevSet.weight,
@@ -393,6 +401,14 @@ export function WorkoutPlayer({ workout, onClose, resumeFromActive }: WorkoutPla
 
     return (
       <div className="space-y-2 mt-5">
+        {currentTarget && (
+          <ExerciseCue
+            target={currentTarget}
+            repsHint={cueRepsHint}
+            compact={cueIsCompact}
+          />
+        )}
+
         {logs.map((set, idx) => {
           const pastSet = pastLogs[idx];
           const currentSets: SetData[] = logs
@@ -413,10 +429,11 @@ export function WorkoutPlayer({ workout, onClose, resumeFromActive }: WorkoutPla
           const pastWeightNum = Number(pastSet?.weight);
           const weightDelta = pastWeightNum > 0 && weightNum > 0 ? weightNum - pastWeightNum : null;
 
-          // Adjusted target weight for readiness (A6)
-          const adjustedSuggested = pastWeightNum > 0 && readinessFact < 1
-            ? Math.round(pastWeightNum * readinessFact / 2.5) * 2.5
-            : null;
+          const targetWeightPlaceholder = currentTarget?.targetWeight
+            ? String(currentTarget.targetWeight)
+            : (pastSet?.weight || "0");
+          const repsHint = getNextSetRepsHint(logs, idx, currentExercise.reps);
+          const repsPlaceholder = repsHint.placeholder || pastSet?.reps || "0";
 
           return (
             <motion.div key={idx} layout
@@ -454,7 +471,7 @@ export function WorkoutPlayer({ workout, onClose, resumeFromActive }: WorkoutPla
                 <StepperInput value={set.weight}
                   onChange={v => updateSet(currentExercise.id, idx, 'weight', v)}
                   onBlur={() => handleSetBlur(currentExercise.id, idx)}
-                  step={2.5} placeholder={adjustedSuggested ? String(adjustedSuggested) : (pastSet?.weight || "0")}
+                  step={2.5} placeholder={targetWeightPlaceholder}
                   isComplete={set.isComplete} inputCls="w-11" btnCls="w-7" />
 
                 <span className="text-slate-700 text-xs font-bold shrink-0">×</span>
@@ -462,7 +479,7 @@ export function WorkoutPlayer({ workout, onClose, resumeFromActive }: WorkoutPla
                 <StepperInput value={set.reps}
                   onChange={v => updateSet(currentExercise.id, idx, 'reps', v)}
                   onBlur={() => handleSetBlur(currentExercise.id, idx)}
-                  step={1} placeholder={pastSet?.reps || "0"}
+                  step={1} placeholder={repsPlaceholder}
                   isComplete={set.isComplete} inputCls="w-8" btnCls="w-6" />
 
                 <AnimatePresence>
@@ -591,6 +608,7 @@ export function WorkoutPlayer({ workout, onClose, resumeFromActive }: WorkoutPla
         {/* A4 — Auto-progression card */}
         <AnimatePresence>
           {allSetsComplete && currentExercise && (() => {
+            if (currentTarget?.targetWeight) return null;
             const sug = autoProgression(allSessions, currentExercise.id, currentExercise.reps, currentExercise.isCompound ?? false);
             if (!sug) return null;
             const isGood = sug.action === 'increase-weight';
