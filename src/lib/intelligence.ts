@@ -1,5 +1,5 @@
-import { Exercise } from '../data';
-import { SetData, WorkoutSession } from './storage';
+import { Exercise, findExerciseByLogKey, logKeysForExerciseId } from '../data';
+import { ExerciseLog, SetData, WorkoutSession } from './storage';
 
 const roundToIncrement = (value: number, increment: number) =>
   Math.round(value / increment) * increment;
@@ -12,6 +12,11 @@ const parseRepRange = (repRange: string): { min: number; max: number; label: str
 };
 
 const formatKg = (value: number) => Number(value.toFixed(2));
+
+const exerciseLogs = (session: WorkoutSession, exId: string): ExerciseLog[] =>
+  logKeysForExerciseId(exId)
+    .map(key => session.logs[key])
+    .filter((log): log is ExerciseLog => Boolean(log));
 
 // ── A2: Epley estimated 1RM ───────────────────────────────────────────────────
 export const calcE1RM = (weight: number, reps: number): number => {
@@ -70,7 +75,7 @@ export const weeklyMuscleGroupSets = (
 
   for (const session of weekSessions) {
     for (const [exId, log] of Object.entries(session.logs)) {
-      const ex = exercises.find(e => e.id === exId);
+      const ex = exercises.find(e => e.id === exId) ?? findExerciseByLogKey(exId)?.exercise;
       if (!ex?.muscleGroups) continue;
       const hardSets = log.sets.filter(s => s.isComplete && Number(s.weight) > 0).length;
       for (const mg of ex.muscleGroups) {
@@ -88,10 +93,10 @@ export const e1RMProgression = (
   exId: string,
 ): Array<{ date: string; e1rm: number; weight: string; reps: string }> =>
   sessions
-    .filter(s => s.logs[exId])
+    .filter(s => exerciseLogs(s, exId).length > 0)
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
     .map(s => {
-      const sets = (s.logs[exId]?.sets ?? []).filter(
+      const sets = exerciseLogs(s, exId).flatMap(log => log.sets).filter(
         st => st.isComplete && Number(st.weight) > 0 && Number(st.reps) > 0,
       );
       if (!sets.length) return null;
@@ -156,13 +161,13 @@ export const autoProgression = (
   if (!prog.length) return null;
 
   const sessionsForEx = sessions
-    .filter(s => s.logs[exId])
+    .filter(s => exerciseLogs(s, exId).length > 0)
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   const lastSession = sessionsForEx[0];
   if (!lastSession) return null;
 
-  const lastSets = lastSession.logs[exId].sets.filter(
+  const lastSets = exerciseLogs(lastSession, exId).flatMap(log => log.sets).filter(
     s => s.isComplete && Number(s.weight) > 0 && Number(s.reps) > 0,
   );
   if (!lastSets.length) return null;
@@ -234,12 +239,14 @@ export const getSessionTarget = (
 ): SessionTarget => {
   const reps = parseRepRange(repRange).label;
   const sessionsForEx = sessions
-    .filter(s => s.logs[exId])
+    .filter(s => exerciseLogs(s, exId).length > 0)
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-  const lastSets = sessionsForEx[0]?.logs[exId]?.sets.filter(
+  const lastSets = sessionsForEx[0]
+    ? exerciseLogs(sessionsForEx[0], exId).flatMap(log => log.sets).filter(
     s => s.isComplete && Number(s.weight) > 0 && Number(s.reps) > 0,
-  ) ?? [];
+    )
+    : [];
 
   if (!lastSets.length) {
     return {

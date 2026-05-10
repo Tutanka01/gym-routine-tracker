@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { storage, ExerciseLog, SetData, SetType } from "../lib/storage";
 import { RestTimer } from "./RestTimer";
-import { setVolume, isVolumePR, isWeightPR, exerciseHistorySets, fmtVol } from "../lib/stats";
+import { setVolume, isVolumePR, isWeightPR, exerciseHistorySets, fmtVol, lastExerciseLog } from "../lib/stats";
 import { SessionTimer } from "./SessionTimer";
 import { WorkoutRoadmap } from "./WorkoutRoadmap";
 import { NextExercisePreview } from "./NextExercisePreview";
@@ -286,7 +286,7 @@ export function WorkoutPlayer({ workout, onClose, resumeFromActive }: WorkoutPla
   };
 
   const prefillExercise = (exerciseId: string) => {
-    const last = lastWorkoutLogs?.[exerciseId];
+    const last = lastExerciseLog(allSessions, exerciseId) ?? lastWorkoutLogs?.[exerciseId];
     if (!last) return;
     const target = sessionTargets[exerciseId];
     setSessionLogs(prev => {
@@ -374,7 +374,7 @@ export function WorkoutPlayer({ workout, onClose, resumeFromActive }: WorkoutPla
   const renderSets = () => {
     if (!currentExercise || !sessionLogs[currentExercise.id]) return null;
     const logs = sessionLogs[currentExercise.id].sets;
-    const pastLogs = lastWorkoutLogs?.[currentExercise.id]?.sets || [];
+    const pastLogs = (lastExerciseLog(allSessions, currentExercise.id) ?? lastWorkoutLogs?.[currentExercise.id])?.sets || [];
     const exHistory = exerciseHistorySets(allSessions, currentExercise.id);
     const allSetsComplete = logs.every(s => s.isComplete && Number(s.weight) > 0);
     const firstIncompleteIndex = logs.findIndex(s => !s.isComplete);

@@ -2,7 +2,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { ChevronLeft, Trophy, TrendingUp, TrendingDown, Search, Calendar, Trash2, MessageSquare } from "lucide-react";
 import { storage, WorkoutSession, ExerciseLog } from "../lib/storage";
-import { workouts, allExercises, findExercise } from "../data";
+import { workouts, trackedExercises, findExercise } from "../data";
 import { bestSetEver, exerciseProgression, fmtDate, fmtRelativeShort, fmtVol, sessionVolume, setVolume, topSet } from "../lib/stats";
 import { Sparkline } from "./Sparkline";
 
@@ -21,7 +21,7 @@ export function History({ onClose }: Props) {
 
   const sessions = useMemo(() => storage.getSessions(), [refreshKey]);
   const exercises = useMemo(
-    () => allExercises().filter(ex => ex.name.toLowerCase().includes(query.toLowerCase())),
+    () => trackedExercises().filter(ex => ex.name.toLowerCase().includes(query.toLowerCase())),
     [query],
   );
 

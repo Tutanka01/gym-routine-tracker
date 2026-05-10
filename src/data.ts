@@ -6,6 +6,8 @@ export type MuscleGroup =
 
 export type Exercise = {
   id: string;
+  trackingId?: string;
+  legacyIds?: string[];
   name: string;
   sets: number;
   reps: string;
@@ -40,13 +42,13 @@ export const workouts: Record<string, Workout> = {
     name: "SÉANCE 1 — UPPER A",
     warmup: "5 à 8 min marche inclinée ou vélo tranquille.",
     exercises: [
-      { id: "ua1", name: "Chest press machine ou développé couché", sets: 3, reps: "6-10", rir: "2", rest: 150, isCompound: true, muscleGroups: ['chest'], alternatives: ["Chest press convergente", "Developpe couche barre", "Developpe couche halteres"] },
-      { id: "ua2", name: "Tirage vertical / Lat pulldown", sets: 3, reps: "8-12", rir: "2", rest: 120, isCompound: true, muscleGroups: ['back-vert'], alternatives: ["Tractions assistees", "Tirage vertical prise neutre", "Tirage vertical unilateral"] },
-      { id: "ua3", name: "Rowing assis machine ou câble", sets: 3, reps: "8-12", rir: "2", rest: 120, isCompound: true, muscleGroups: ['back-horiz'], alternatives: ["Rowing poitrine appuyee", "Rowing haltere un bras", "Rowing cable unilateral"] },
-      { id: "ua4", name: "Développé épaules machine", sets: 3, reps: "8-12", rir: "2", rest: 120, isCompound: true, muscleGroups: ['shoulders-side'], alternatives: ["Developpe militaire halteres", "Shoulder press convergente", "Landmine press"] },
-      { id: "ua5", name: "Élévations latérales haltères ou câble", sets: 3, reps: "12-20", rir: "1-2", rest: 60, muscleGroups: ['shoulders-side'], alternatives: ["Elevations laterales machine", "Elevations laterales cable", "Elevations laterales assis"] },
-      { id: "ua6", name: "Extension triceps à la corde", sets: 3, reps: "10-15", rir: "1-2", rest: 75, muscleGroups: ['triceps'], alternatives: ["Barre V poulie haute", "Extension triceps overhead", "Dips assistes"] },
-      { id: "ua7", name: "Curl incliné ou curl câble", sets: 3, reps: "10-15", rir: "1-2", rest: 75, muscleGroups: ['biceps'], alternatives: ["Curl pupitre machine", "Curl halteres alternes", "Curl barre EZ"] },
+      { id: "ua1", trackingId: "chest-press-machine", legacyIds: ["ua1"], name: "Chest press machine", sets: 3, reps: "6-10", rir: "2", rest: 150, isCompound: true, muscleGroups: ['chest'], alternatives: ["Chest press convergente", "Developpe couche barre", "Developpe couche halteres"] },
+      { id: "ua2", trackingId: "tirage-vertical", legacyIds: ["ua2", "ub3"], name: "Tirage vertical", sets: 3, reps: "8-12", rir: "2", rest: 120, isCompound: true, muscleGroups: ['back-vert'], alternatives: ["Tirage vertical prise neutre", "Tractions assistees", "Tirage vertical unilateral"] },
+      { id: "ua3", trackingId: "rowing-assis-cable", legacyIds: ["ua3"], name: "Rowing assis câble", sets: 3, reps: "8-12", rir: "2", rest: 120, isCompound: true, muscleGroups: ['back-horiz'], alternatives: ["Rowing poitrine appuyee", "Rowing haltere un bras", "Rowing cable unilateral"] },
+      { id: "ua4", trackingId: "developpe-epaules-machine", legacyIds: ["ua4"], name: "Développé épaules machine", sets: 3, reps: "8-12", rir: "2", rest: 120, isCompound: true, muscleGroups: ['shoulders-side'], alternatives: ["Developpe militaire halteres", "Shoulder press convergente", "Landmine press"] },
+      { id: "ua5", trackingId: "elevations-laterales-cable", legacyIds: ["ua5"], name: "Élévations latérales câble", sets: 3, reps: "12-20", rir: "1-2", rest: 60, muscleGroups: ['shoulders-side'], alternatives: ["Elevations laterales haltères", "Elevations laterales machine", "Elevations laterales assis"] },
+      { id: "ua6", trackingId: "extension-triceps-corde", legacyIds: ["ua6"], name: "Extension triceps à la corde", sets: 3, reps: "10-15", rir: "1-2", rest: 75, muscleGroups: ['triceps'], alternatives: ["Barre V poulie haute", "Extension triceps overhead", "Dips assistes"] },
+      { id: "ua7", trackingId: "curl-incline", legacyIds: ["ua7"], name: "Curl incliné", sets: 3, reps: "10-15", rir: "1-2", rest: 75, muscleGroups: ['biceps'], alternatives: ["Curl câble", "Curl pupitre machine", "Curl halteres alternes", "Curl barre EZ"] },
     ],
     cooldown: "15 à 20 min marche inclinée tranquille.",
   },
@@ -55,12 +57,12 @@ export const workouts: Record<string, Workout> = {
     name: "SÉANCE 2 — LOWER A",
     warmup: "5 à 8 min vélo ou marche.",
     exercises: [
-      { id: "la1", name: "Leg press ou hack squat", sets: 3, reps: "8-12", rir: "2", rest: 180, isCompound: true, muscleGroups: ['quads', 'glutes'], alternatives: ["Hack squat", "Smith machine squat", "Goblet squat lourd"] },
-      { id: "la2", name: "Romanian deadlift haltères ou barre", sets: 3, reps: "8-10", rir: "2-3", rest: 180, isCompound: true, muscleGroups: ['hamstrings', 'glutes'], alternatives: ["Souleve de terre roumain barre", "Souleve de terre roumain halteres", "Good morning machine"] },
-      { id: "la3", name: "Leg curl", sets: 3, reps: "10-15", rir: "1-2", rest: 90, muscleGroups: ['hamstrings'], alternatives: ["Leg curl assis", "Leg curl allonge", "Nordic curl assiste"] },
-      { id: "la4", name: "Leg extension", sets: 3, reps: "10-15", rir: "1-2", rest: 90, muscleGroups: ['quads'], alternatives: ["Leg extension unilateral", "Sissy squat assiste", "Spanish squat"] },
-      { id: "la5", name: "Mollets debout ou assis", sets: 3, reps: "10-20", rir: "1-2", rest: 60, muscleGroups: ['calves'], alternatives: ["Mollets presse", "Mollets debout machine", "Mollets assis machine"] },
-      { id: "la6", name: "Gainage ou crunch câble", sets: 3, reps: "10-15 (ou 30-60s)", rir: "-", rest: 60, muscleGroups: ['core'], alternatives: ["Crunch machine", "Pallof press", "Dead bug charge"] },
+      { id: "la1", trackingId: "leg-press", legacyIds: ["la1", "lb2"], name: "Leg press", sets: 3, reps: "8-12", rir: "2", rest: 180, isCompound: true, muscleGroups: ['quads', 'glutes'], alternatives: ["Hack squat", "Smith machine squat", "Goblet squat lourd"] },
+      { id: "la2", trackingId: "romanian-deadlift-halteres", legacyIds: ["la2"], name: "Romanian deadlift haltères", sets: 3, reps: "8-10", rir: "2-3", rest: 180, isCompound: true, muscleGroups: ['hamstrings', 'glutes'], alternatives: ["Souleve de terre roumain barre", "Good morning machine"] },
+      { id: "la3", trackingId: "leg-curl", legacyIds: ["la3", "lb4"], name: "Leg curl assis", sets: 3, reps: "10-15", rir: "1-2", rest: 90, muscleGroups: ['hamstrings'], alternatives: ["Leg curl allonge", "Leg curl debout", "Nordic curl assiste"] },
+      { id: "la4", trackingId: "leg-extension", legacyIds: ["la4"], name: "Leg extension", sets: 3, reps: "10-15", rir: "1-2", rest: 90, muscleGroups: ['quads'], alternatives: ["Leg extension unilateral", "Sissy squat assiste", "Spanish squat"] },
+      { id: "la5", trackingId: "mollets", legacyIds: ["la5", "lb5"], name: "Mollets debout machine", sets: 3, reps: "10-20", rir: "1-2", rest: 60, muscleGroups: ['calves'], alternatives: ["Mollets presse", "Mollets assis machine"] },
+      { id: "la6", trackingId: "crunch-cable", legacyIds: ["la6", "lb6"], name: "Crunch câble", sets: 3, reps: "10-15", rir: "-", rest: 60, muscleGroups: ['core'], alternatives: ["Crunch machine", "Pallof press", "Dead bug charge"] },
     ],
     notes: "Important: Ne pas détruire les jambes les deux premières semaines. Le but est de reprendre, pas de boiter pendant 4 jours.",
   },
@@ -69,13 +71,13 @@ export const workouts: Record<string, Workout> = {
     name: "SÉANCE 3 — UPPER B",
     warmup: "5 à 8 min marche inclinée ou vélo tranquille.",
     exercises: [
-      { id: "ub1", name: "Développé incliné haltères ou machine", sets: 3, reps: "8-12", rir: "2", rest: 150, isCompound: true, muscleGroups: ['chest'], alternatives: ["Developpe incline machine", "Developpe incline barre", "Chest press inclinee"] },
-      { id: "ub2", name: "Rowing poitrine appuyée / chest-supported row", sets: 3, reps: "8-12", rir: "2", rest: 120, isCompound: true, muscleGroups: ['back-horiz'], alternatives: ["Rowing T-bar appuye", "Rowing assis cable", "Rowing machine convergente"] },
-      { id: "ub3", name: "Tirage neutre ou tractions assistées", sets: 3, reps: "8-12", rir: "2", rest: 120, isCompound: true, muscleGroups: ['back-vert'], alternatives: ["Lat pulldown neutre", "Tractions elastique", "Pull-over cable"] },
-      { id: "ub4", name: "Pec deck ou écartés câble", sets: 3, reps: "12-15", rir: "1-2", rest: 75, muscleGroups: ['chest'], alternatives: ["Ecartes cable bas-haut", "Ecartes halteres incline", "Chest fly machine"] },
-      { id: "ub5", name: "Oiseau machine / rear delts", sets: 3, reps: "12-20", rir: "1-2", rest: 60, muscleGroups: ['shoulders-rear'], alternatives: ["Face pull", "Oiseau cable", "Reverse pec deck"] },
-      { id: "ub6", name: "Dips assistés ou extension triceps", sets: 3, reps: "8-15", rir: "1-2", rest: 90, isCompound: true, muscleGroups: ['triceps', 'chest'], alternatives: ["Extension corde", "Barre au front EZ", "Pompes serrees"] },
-      { id: "ub7", name: "Curl marteau", sets: 3, reps: "10-15", rir: "1-2", rest: 75, muscleGroups: ['biceps'], alternatives: ["Curl corde marteau", "Curl incline", "Curl pupitre"] },
+      { id: "ub1", trackingId: "developpe-incline-halteres", legacyIds: ["ub1"], name: "Développé incliné haltères", sets: 3, reps: "8-12", rir: "2", rest: 150, isCompound: true, muscleGroups: ['chest'], alternatives: ["Developpe incline machine", "Developpe incline barre", "Chest press inclinee"] },
+      { id: "ub2", trackingId: "rowing-poitrine-appuyee", legacyIds: ["ub2"], name: "Rowing poitrine appuyée", sets: 3, reps: "8-12", rir: "2", rest: 120, isCompound: true, muscleGroups: ['back-horiz'], alternatives: ["Rowing T-bar appuye", "Rowing assis cable", "Rowing machine convergente"] },
+      { id: "ub3", trackingId: "tirage-vertical", legacyIds: ["ua2", "ub3"], name: "Tirage vertical", sets: 3, reps: "8-12", rir: "2", rest: 120, isCompound: true, muscleGroups: ['back-vert'], alternatives: ["Tirage vertical prise neutre", "Tractions assistees", "Pull-over cable"] },
+      { id: "ub4", trackingId: "pec-deck", legacyIds: ["ub4"], name: "Pec deck", sets: 3, reps: "12-15", rir: "1-2", rest: 75, muscleGroups: ['chest'], alternatives: ["Ecartes cable bas-haut", "Ecartes halteres incline", "Chest fly machine"] },
+      { id: "ub5", trackingId: "oiseau-machine", legacyIds: ["ub5"], name: "Oiseau machine", sets: 3, reps: "12-20", rir: "1-2", rest: 60, muscleGroups: ['shoulders-rear'], alternatives: ["Face pull", "Oiseau cable", "Reverse pec deck"] },
+      { id: "ub6", trackingId: "dips-assistes", legacyIds: ["ub6"], name: "Dips assistés", sets: 3, reps: "8-15", rir: "1-2", rest: 90, isCompound: true, muscleGroups: ['triceps', 'chest'], alternatives: ["Extension corde", "Barre au front EZ", "Pompes serrees"] },
+      { id: "ub7", trackingId: "curl-marteau", legacyIds: ["ub7"], name: "Curl marteau", sets: 3, reps: "10-15", rir: "1-2", rest: 75, muscleGroups: ['biceps'], alternatives: ["Curl corde marteau", "Curl incline", "Curl pupitre"] },
     ],
     cooldown: "15 à 20 min marche inclinée tranquille.",
   },
@@ -84,12 +86,12 @@ export const workouts: Record<string, Workout> = {
     name: "SÉANCE 4 — LOWER B",
     warmup: "5 à 8 min vélo ou marche.",
     exercises: [
-      { id: "lb1", name: "Squat guidé, hack squat ou goblet squat", sets: 3, reps: "8-12", rir: "2", rest: 180, isCompound: true, muscleGroups: ['quads', 'glutes'], alternatives: ["Hack squat", "Leg press", "Belt squat"] },
-      { id: "lb2", name: "Hip thrust ou presse pieds hauts", sets: 3, reps: "8-12", rir: "2", rest: 150, isCompound: true, muscleGroups: ['glutes', 'hamstrings'], alternatives: ["Glute bridge machine", "Presse pieds hauts", "Pull-through cable"] },
-      { id: "lb3", name: "Fentes bulgares ou split squat", sets: 2, reps: "8-12", rir: "2-3", rest: 120, isCompound: true, muscleGroups: ['quads', 'glutes'], notes: "Si les fentes détruisent trop : Remplacer par une machine jambes plus stable.", alternatives: ["Split squat Smith", "Step-up", "Leg press unilaterale"] },
-      { id: "lb4", name: "Leg curl assis ou allongé", sets: 3, reps: "10-15", rir: "1-2", rest: 90, muscleGroups: ['hamstrings'], alternatives: ["Leg curl debout", "Nordic curl assiste", "Swiss ball leg curl"] },
-      { id: "lb5", name: "Mollets", sets: 3, reps: "10-20", rir: "1-2", rest: 60, muscleGroups: ['calves'], alternatives: ["Mollets presse", "Mollets assis", "Mollets debout"] },
-      { id: "lb6", name: "Relevés de jambes ou crunch câble", sets: 3, reps: "10-15", rir: "-", rest: 60, muscleGroups: ['core'], alternatives: ["Crunch cable", "Captain chair", "Planche lestee"] },
+      { id: "lb1", trackingId: "hack-squat", legacyIds: ["lb1"], name: "Hack squat", sets: 3, reps: "8-12", rir: "2", rest: 180, isCompound: true, muscleGroups: ['quads', 'glutes'], alternatives: ["Squat guidé", "Leg press", "Belt squat"] },
+      { id: "lb2", trackingId: "leg-press", legacyIds: ["la1", "lb2"], name: "Leg press", sets: 3, reps: "8-12", rir: "2", rest: 150, isCompound: true, muscleGroups: ['quads', 'glutes'], alternatives: ["Presse pieds hauts", "Glute bridge machine", "Pull-through cable"] },
+      { id: "lb3", trackingId: "fentes-bulgares", legacyIds: ["lb3"], name: "Fentes bulgares", sets: 2, reps: "8-12", rir: "2-3", rest: 120, isCompound: true, muscleGroups: ['quads', 'glutes'], notes: "Si les fentes détruisent trop : Remplacer par une machine jambes plus stable.", alternatives: ["Split squat Smith", "Step-up", "Leg press unilaterale"] },
+      { id: "lb4", trackingId: "leg-curl", legacyIds: ["la3", "lb4"], name: "Leg curl assis", sets: 3, reps: "10-15", rir: "1-2", rest: 90, muscleGroups: ['hamstrings'], alternatives: ["Leg curl allonge", "Leg curl debout", "Nordic curl assiste", "Swiss ball leg curl"] },
+      { id: "lb5", trackingId: "mollets", legacyIds: ["la5", "lb5"], name: "Mollets debout machine", sets: 3, reps: "10-20", rir: "1-2", rest: 60, muscleGroups: ['calves'], alternatives: ["Mollets presse", "Mollets assis"] },
+      { id: "lb6", trackingId: "crunch-cable", legacyIds: ["la6", "lb6"], name: "Crunch câble", sets: 3, reps: "10-15", rir: "-", rest: 60, muscleGroups: ['core'], alternatives: ["Releves de jambes", "Captain chair", "Planche lestee"] },
     ]
   }
 };
@@ -113,6 +115,42 @@ export function getToday(): WeekDay {
 
 export const allExercises = (): Exercise[] =>
   Object.values(workouts).flatMap(w => w.exercises);
+
+export const trackingIdFor = (exercise: Exercise): string => exercise.trackingId ?? exercise.id;
+
+export const exerciseLogKeys = (exercise: Exercise): string[] =>
+  Array.from(new Set([exercise.id, trackingIdFor(exercise), ...(exercise.legacyIds ?? [])]));
+
+export const findExerciseByLogKey = (logKey: string): { workout: Workout; exercise: Exercise } | null => {
+  for (const w of Object.values(workouts)) {
+    const ex = w.exercises.find(e => exerciseLogKeys(e).includes(logKey));
+    if (ex) return { workout: w, exercise: ex };
+  }
+  return null;
+};
+
+export const logKeysForExerciseId = (exerciseId: string): string[] => {
+  const source = findExercise(exerciseId)?.exercise ?? findExerciseByLogKey(exerciseId)?.exercise;
+  if (!source) return [exerciseId];
+  const trackingId = trackingIdFor(source);
+  return Array.from(new Set(
+    allExercises()
+      .filter(ex => trackingIdFor(ex) === trackingId)
+      .flatMap(exerciseLogKeys),
+  ));
+};
+
+export const trackedExercises = (): Exercise[] => {
+  const seen = new Set<string>();
+  const result: Exercise[] = [];
+  for (const ex of allExercises()) {
+    const trackingId = trackingIdFor(ex);
+    if (seen.has(trackingId)) continue;
+    seen.add(trackingId);
+    result.push(ex);
+  }
+  return result;
+};
 
 export const findExercise = (id: string): { workout: Workout; exercise: Exercise } | null => {
   for (const w of Object.values(workouts)) {

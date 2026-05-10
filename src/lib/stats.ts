@@ -1,4 +1,4 @@
-import { Workout } from '../data';
+import { logKeysForExerciseId, Workout } from '../data';
 import { WorkoutSession, SetData, ExerciseLog } from './storage';
 
 export const setVolume = (s: SetData) => (Number(s.weight) || 0) * (Number(s.reps) || 0);
@@ -28,15 +28,32 @@ export const isWeightPR = (candidate: SetData, history: SetData[]) => {
   return history.every(h => (Number(h.weight) || 0) < w);
 };
 
+const exerciseLogs = (session: WorkoutSession, exId: string): ExerciseLog[] =>
+  logKeysForExerciseId(exId)
+    .map(key => session.logs[key])
+    .filter((log): log is ExerciseLog => Boolean(log));
+
+export const lastExerciseLog = (sessions: WorkoutSession[], exId: string): ExerciseLog | null => {
+  const keys = logKeysForExerciseId(exId);
+  const sorted = [...sessions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  for (const session of sorted) {
+    for (const key of keys) {
+      const log = session.logs[key];
+      if (log) return log;
+    }
+  }
+  return null;
+};
+
 export const bestSetEver = (sessions: WorkoutSession[], exId: string) => {
   let best: { weight: number; reps: number; volume: number; date: string } | null = null;
   for (const sess of sessions) {
-    const log = sess.logs[exId];
-    if (!log) continue;
-    for (const set of log.sets) {
-      const v = setVolume(set);
-      if (v > 0 && (!best || v > best.volume)) {
-        best = { weight: Number(set.weight), reps: Number(set.reps), volume: v, date: sess.date };
+    for (const log of exerciseLogs(sess, exId)) {
+      for (const set of log.sets) {
+        const v = setVolume(set);
+        if (v > 0 && (!best || v > best.volume)) {
+          best = { weight: Number(set.weight), reps: Number(set.reps), volume: v, date: sess.date };
+        }
       }
     }
   }
@@ -44,17 +61,20 @@ export const bestSetEver = (sessions: WorkoutSession[], exId: string) => {
 };
 
 export const exerciseHistorySets = (sessions: WorkoutSession[], exId: string): SetData[] =>
-  sessions.flatMap(s => s.logs[exId]?.sets || []).filter(s => s.isComplete && Number(s.weight) > 0);
+  sessions.flatMap(s => exerciseLogs(s, exId).flatMap(log => log.sets)).filter(s => s.isComplete && Number(s.weight) > 0);
 
 export const exerciseProgression = (sessions: WorkoutSession[], exId: string) =>
   sessions
-    .filter(s => s.logs[exId])
+    .filter(s => exerciseLogs(s, exId).length > 0)
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-    .map(s => ({
-      date: s.date,
-      top: topSet(s.logs[exId].sets) || null,
-      volume: (s.logs[exId].sets || []).reduce((a, x) => a + setVolume(x), 0),
-    }))
+    .map(s => {
+      const sets = exerciseLogs(s, exId).flatMap(log => log.sets);
+      return {
+        date: s.date,
+        top: topSet(sets) || null,
+        volume: sets.reduce((a, x) => a + setVolume(x), 0),
+      };
+    })
     .filter(p => p.top && setVolume(p.top) > 0);
 
 // Days streak: how many consecutive days back from today have at least one session.
