@@ -5,17 +5,33 @@ import { Exercise } from "../data";
 export function ExerciseSwapSheet({
   isOpen,
   exercise,
+  library,
   selectedName,
   onClose,
   onSelect,
 }: {
   isOpen: boolean;
   exercise: Exercise | null;
+  library: Exercise[];
   selectedName: string;
   onClose: () => void;
-  onSelect: (displayName: string) => void;
+  onSelect: (exercise: Exercise) => void;
 }) {
-  const options = exercise ? [exercise.name, ...(exercise.alternatives || [])] : [];
+  const options = exercise
+    ? [
+      exercise,
+      ...library.filter(candidate => (
+        candidate.id !== exercise.id
+        && candidate.muscleGroups?.some(mg => exercise.muscleGroups?.includes(mg))
+      )),
+      ...(exercise.alternatives || []).map((name, index) => ({
+        ...exercise,
+        id: `${exercise.id}-alt-${index}`,
+        trackingId: `${exercise.trackingId ?? exercise.id}-alt-${index}`,
+        name,
+      })),
+    ].filter((candidate, index, arr) => arr.findIndex(x => x.name === candidate.name) === index)
+    : [];
 
   return (
     <AnimatePresence>
@@ -45,10 +61,10 @@ export function ExerciseSwapSheet({
             </p>
             <div className="space-y-2">
               {options.map(option => {
-                const active = option === selectedName;
+                const active = option.name === selectedName;
                 return (
                   <button
-                    key={option}
+                    key={option.id}
                     onClick={() => { onSelect(option); onClose(); }}
                     className={`w-full flex items-center gap-3 rounded-xl border px-4 py-3 text-left active:scale-[0.99] transition ${
                       active
@@ -56,7 +72,7 @@ export function ExerciseSwapSheet({
                         : "bg-[var(--color-void-2)] border-white/[0.06] text-[#C0D0F0]"
                     }`}
                   >
-                    <span className="flex-1 text-sm font-semibold">{option}</span>
+                    <span className="flex-1 text-sm font-semibold">{option.name}</span>
                     {active && <Check className="w-4 h-4" strokeWidth={3} />}
                   </button>
                 );
@@ -68,4 +84,3 @@ export function ExerciseSwapSheet({
     </AnimatePresence>
   );
 }
-

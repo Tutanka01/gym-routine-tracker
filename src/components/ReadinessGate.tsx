@@ -63,7 +63,6 @@ export function ReadinessGate({ onStart }: ReadinessGateProps) {
   const label = readinessLabel(sleep, energy);
   const isLow = factor < 1.0;
   const isCritical = factor <= 0.90;
-  const weightAdj = factor < 1 ? `−${Math.round((1 - factor) * 100)}%` : null;
   const rirAdj = factor < 1 ? "+1 RIR cible" : null;
 
   return (
@@ -141,12 +140,11 @@ export function ReadinessGate({ onStart }: ReadinessGateProps) {
                   style={{ color: isCritical ? '#FF6B35' : '#FFD740' }}
                 />
                 <p className="text-xs text-slate-400 leading-relaxed">
-                  Poids suggérés ajustés à{" "}
-                  <span className="font-bold text-[#C0D0F0]">{weightAdj}</span>
+                  Charge plafonnée légèrement
                   {rirAdj && (
                     <> et <span className="font-bold text-[#C0D0F0]">{rirAdj}</span></>
                   )}
-                  . Reste dans les clous, c'est un cut.
+                  . Si la vitesse chute, coupe une série.
                 </p>
               </div>
             ) : (

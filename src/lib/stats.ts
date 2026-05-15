@@ -29,8 +29,9 @@ export const isWeightPR = (candidate: SetData, history: SetData[]) => {
 };
 
 const exerciseLogs = (session: WorkoutSession, exId: string): ExerciseLog[] =>
-  logKeysForExerciseId(exId)
-    .map(key => session.logs[key])
+  Object.entries(session.logs)
+    .filter(([key, log]) => logKeysForExerciseId(exId).includes(key) || log.performedExerciseId === exId)
+    .map(([, log]) => log)
     .filter((log): log is ExerciseLog => Boolean(log));
 
 export const lastExerciseLog = (sessions: WorkoutSession[], exId: string): ExerciseLog | null => {
@@ -41,6 +42,8 @@ export const lastExerciseLog = (sessions: WorkoutSession[], exId: string): Exerc
       const log = session.logs[key];
       if (log) return log;
     }
+    const performed = Object.values(session.logs).find(log => log.performedExerciseId === exId);
+    if (performed) return performed;
   }
   return null;
 };

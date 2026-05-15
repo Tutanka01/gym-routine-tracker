@@ -25,6 +25,7 @@ Routine Tracker is a single-purpose tool built around one program: a 4-day Upper
 - Starts a rest timer the moment you complete a set, with haptic + audio feedback
 - Saves your progress automatically so a browser crash or phone lock never loses a set
 - Shows you exactly what you lifted last time, right next to the input
+- Lets you swap an exercise during the session while keeping the real exercise in the log
 
 **Between sessions**
 
@@ -32,6 +33,7 @@ Routine Tracker is a single-purpose tool built around one program: a 4-day Upper
 - Sparkline charts showing your weight and waist trends over months
 - Full exercise history with per-exercise volume progression
 - Session log with every set, filterable by exercise
+- Editable program, weekly schedule, and exercise library from the settings
 
 **Always**
 
@@ -55,7 +57,7 @@ The app runs as a static build served by nginx — no database, no backend, no e
 
 ## The program
 
-4 sessions per week, structured as two Upper/Lower pairs:
+The default program is 4 sessions per week, structured as two Upper/Lower pairs. It can be edited in the app settings:
 
 | Day | Session |
 |---|---|
@@ -113,7 +115,7 @@ npm install
 npm run dev
 ```
 
-Runs on `http://localhost:5173` with hot reload.
+Runs on `http://localhost:3000` with hot reload.
 
 ---
 

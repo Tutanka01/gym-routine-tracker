@@ -1,13 +1,13 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import type { PointerEvent } from "react";
-import { Workout } from "../data";
+import { Exercise, Workout } from "../data";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Check, ChevronDown, ChevronLeft, ChevronRight, Activity, Flame,
   Trophy, RotateCcw, MessageSquare, Shuffle, Mic, MicOff,
   TrendingUp, TrendingDown, AlertCircle, ArrowRight, Layers,
 } from "lucide-react";
-import { storage, ExerciseLog, SetData, SetType } from "../lib/storage";
+import { storage, ExerciseLog, ProgramData, SetData, SetType } from "../lib/storage";
 import { RestTimer } from "./RestTimer";
 import { setVolume, isVolumePR, isWeightPR, exerciseHistorySets, fmtVol, lastExerciseLog } from "../lib/stats";
 import { SessionTimer } from "./SessionTimer";
@@ -30,6 +30,7 @@ import {
 
 interface WorkoutPlayerProps {
   workout: Workout;
+  program: ProgramData;
   onClose: () => void;
   resumeFromActive?: boolean;
 }
@@ -87,7 +88,7 @@ const hasSpeechAPI =
   typeof window !== 'undefined' &&
   ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
 
-export function WorkoutPlayer({ workout, onClose, resumeFromActive }: WorkoutPlayerProps) {
+export function WorkoutPlayer({ workout, program, onClose, resumeFromActive }: WorkoutPlayerProps) {
   const hasCooldown = !!workout.cooldown;
   const finishStep = workout.exercises.length + (hasCooldown ? 1 : 0);
 
@@ -98,7 +99,7 @@ export function WorkoutPlayer({ workout, onClose, resumeFromActive }: WorkoutPla
   const [restartKey, setRestartKey] = useState(0);
   const [restDuration, setRestDuration] = useState(90);
   const [prFlashKey, setPrFlashKey] = useState<string | null>(null);
-  const [startedAt] = useState(() => new Date().toISOString());
+  const [startedAt, setStartedAt] = useState(() => new Date().toISOString());
   const [hydrated, setHydrated] = useState(false);
   const [showAbandonConfirm, setShowAbandonConfirm] = useState(false);
   const [showRoadmap, setShowRoadmap] = useState(false);
@@ -143,10 +144,12 @@ export function WorkoutPlayer({ workout, onClose, resumeFromActive }: WorkoutPla
       });
       setSessionLogs(merged);
       setStep(active.step ?? -1);
+      setStartedAt(active.startedAt);
       if (active.readiness) setReadiness(active.readiness);
     } else {
       setSessionLogs(buildEmptyLogs(workout));
       setStep(-1);
+      setStartedAt(new Date().toISOString());
     }
     setLastWorkoutLogs(storage.getLastWorkoutLogs(workout.id));
     setHydrated(true);
@@ -223,18 +226,23 @@ export function WorkoutPlayer({ workout, onClose, resumeFromActive }: WorkoutPla
     });
   };
 
-  const updateExerciseDisplayName = (exerciseId: string, displayName: string) => {
+  const updatePerformedExercise = (exerciseId: string, performed: Exercise) => {
     setSessionLogs(prev => ({
       ...prev,
       [exerciseId]: {
         ...prev[exerciseId],
-        displayName: displayName === workout.exercises.find(ex => ex.id === exerciseId)?.name ? undefined : displayName,
+        displayName: performed.name,
+        performedExerciseId: performed.id,
+        performedExercise: performed,
       },
     }));
   };
 
   const displayNameFor = (exerciseId: string) =>
-    sessionLogs[exerciseId]?.displayName || workout.exercises.find(ex => ex.id === exerciseId)?.name || exerciseId;
+    sessionLogs[exerciseId]?.displayName
+    || sessionLogs[exerciseId]?.performedExercise?.name
+    || workout.exercises.find(ex => ex.id === exerciseId)?.name
+    || exerciseId;
 
   const handleSetBlur = (exerciseId: string, setIndex: number) => {
     setTimeout(() => {
@@ -323,9 +331,9 @@ export function WorkoutPlayer({ workout, onClose, resumeFromActive }: WorkoutPla
       // Extract all numbers (handles "douze" → keep as word for now, just match digits)
       const nums = transcript.match(/\d+(\.\d+)?/g)?.map(Number) ?? [];
       if (nums.length >= 2) {
-        // First number = reps (smaller), second = weight (larger) — or order in utterance
-        const reps = nums[0];
-        const weight = nums[1];
+        const [a, b] = nums;
+        const reps = a <= b ? a : b;
+        const weight = a <= b ? b : a;
         if (currentExercise) {
           const sets = sessionLogsRef.current[currentExercise.id]?.sets ?? [];
           const firstIncomplete = sets.findIndex(s => !s.isComplete);
@@ -607,12 +615,11 @@ export function WorkoutPlayer({ workout, onClose, resumeFromActive }: WorkoutPla
 
         {/* A4 — Auto-progression card */}
         <AnimatePresence>
-          {allSetsComplete && currentExercise && (() => {
-            if (currentTarget?.targetWeight) return null;
+          {allSetsComplete && currentExercise && currentTarget && (() => {
             const sug = autoProgression(allSessions, currentExercise.id, currentExercise.reps, currentExercise.isCompound ?? false);
-            if (!sug) return null;
-            const isGood = sug.action === 'increase-weight';
-            const isWarn = sug.action === 'deload' || sug.action === 'plateau';
+            const action = sug?.action ?? currentTarget.action;
+            const isGood = action === 'increase-weight';
+            const isWarn = action === 'deload' || action === 'plateau';
             return (
               <motion.div
                 initial={{ opacity: 0, y: 6 }}
@@ -631,11 +638,11 @@ export function WorkoutPlayer({ workout, onClose, resumeFromActive }: WorkoutPla
                   <div className={`text-[11px] font-bold ${isGood ? 'text-[var(--color-signal)]' : isWarn ? 'text-[var(--color-flame)]' : 'text-slate-500'}`}>
                     Prochaine fois
                   </div>
-                  <div className="text-xs text-slate-400">{sug.reason}</div>
+                  <div className="text-xs text-slate-400">{sug?.reason ?? currentTarget.reason}</div>
                 </div>
-                {sug.nextWeight && (
+                {(sug?.nextWeight ?? currentTarget.targetWeight) && (
                   <span className={`font-mono font-bold text-sm shrink-0 ${isGood ? 'text-[var(--color-signal)]' : 'text-[var(--color-flame)]'}`}>
-                    {sug.nextWeight} kg
+                    {sug?.nextWeight ?? currentTarget.targetWeight} kg
                   </span>
                 )}
               </motion.div>
@@ -675,9 +682,7 @@ export function WorkoutPlayer({ workout, onClose, resumeFromActive }: WorkoutPla
           </div>
           <div className="text-[11px] font-mono tnum text-slate-600 mt-0.5">
             {completedSets}/{totalSets} sets · {fmtVol(liveVolume)} kg
-            {readiness && readinessFact < 1 && (
-              <span className="ml-1 text-[var(--color-acid)]">· {Math.round(readinessFact * 100)}%</span>
-            )}
+            {readiness && readinessFact < 1 && <span className="ml-1 text-[var(--color-acid)]">· marge +</span>}
           </div>
         </button>
         <SessionTimer startedAt={startedAt} />
@@ -714,7 +719,7 @@ export function WorkoutPlayer({ workout, onClose, resumeFromActive }: WorkoutPla
               <p className="text-base text-slate-400 px-4 max-w-xs leading-relaxed">{workout.warmup}</p>
               {readiness && readinessFact < 1 && (
                 <div className="px-4 py-3 rounded-2xl bg-[rgba(255,215,64,0.07)] border border-[rgba(255,215,64,0.15)] text-sm text-slate-300 text-left w-full">
-                  <span className="font-bold text-[var(--color-acid)]">Forme réduite</span> — poids suggérés ajustés à {Math.round(readinessFact * 100)}%.
+                  <span className="font-bold text-[var(--color-acid)]">Forme réduite</span> — garde plus de marge et réduis le volume si la séance se dégrade.
                 </div>
               )}
               {workout.notes && (
@@ -884,9 +889,10 @@ export function WorkoutPlayer({ workout, onClose, resumeFromActive }: WorkoutPla
         onClear={() => noteTarget && updateSet(noteTarget.exerciseId, noteTarget.setIndex, "note", "")} />
 
       <ExerciseSwapSheet isOpen={showSwapSheet} exercise={currentExercise}
+        library={program.library}
         selectedName={currentExercise ? displayNameFor(currentExercise.id) : ""}
         onClose={() => setShowSwapSheet(false)}
-        onSelect={name => currentExercise && updateExerciseDisplayName(currentExercise.id, name)} />
+        onSelect={exercise => currentExercise && updatePerformedExercise(currentExercise.id, exercise)} />
 
       {/* A5 — Plateau detection modal */}
       <AnimatePresence>

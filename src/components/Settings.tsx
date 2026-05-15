@@ -1,10 +1,11 @@
 import { useRef, useState, type ReactNode } from "react";
 import { ChevronLeft, Download, Upload, Volume2, VolumeX, Vibrate, Trash2, Database, Shield } from "lucide-react";
 import { storage, AppSettings } from "../lib/storage";
+import { ProgramBuilder } from "./ProgramBuilder";
 
-interface Props { onClose: () => void; }
+interface Props { onClose: () => void; onProgramChanged?: () => void; }
 
-export function Settings({ onClose }: Props) {
+export function Settings({ onClose, onProgramChanged }: Props) {
   const [settings, setSettings] = useState<AppSettings>(() => storage.getSettings());
   const [stats, setStats] = useState(() => ({
     sessions: storage.getSessions().length,
@@ -118,6 +119,10 @@ export function Settings({ onClose }: Props) {
             active={settings.vibrate}
             onChange={v => update({ vibrate: v })}
           />
+        </Section>
+
+        <Section title="Programme">
+          <ProgramBuilder onChanged={onProgramChanged} />
         </Section>
 
         {/* Backup */}

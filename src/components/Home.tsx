@@ -1,7 +1,7 @@
-import { weeklySchedule, getToday, workouts, allExercises } from "../data";
+import { allExercises, getTodayFromSchedule } from "../data";
 import { Dumbbell, ChevronRight, CheckCircle2, ClipboardCheck, BarChart3, Settings as SettingsIcon, Flame, Play, Activity, Calculator } from "lucide-react";
 import { motion } from "motion/react";
-import { storage, ActiveSession } from "../lib/storage";
+import { storage, ActiveSession, ProgramData } from "../lib/storage";
 import { useState, useEffect, useMemo, type ReactNode } from "react";
 import { computeStreak, fmtVol, sessionVolume, sessionsThisWeek } from "../lib/stats";
 import { weeklyMuscleGroupSets, getVolumeStatus, VOLUME_LANDMARKS } from "../lib/intelligence";
@@ -13,13 +13,14 @@ interface HomeProps {
   onOpenSettings: () => void;
   onOpenVolumeDashboard: () => void;
   onOpenPlateCalculator: () => void;
+  program: ProgramData;
 }
 
 const workoutSubtitle = (name: string) => name.split("—").pop()?.trim() || name;
 
-export function Home({ onStartWorkout, onStartCheckin, onOpenHistory, onOpenSettings, onOpenVolumeDashboard, onOpenPlateCalculator }: HomeProps) {
-  const today = getToday();
-  const todayWorkout = today.workoutId ? workouts[today.workoutId] : null;
+export function Home({ program, onStartWorkout, onStartCheckin, onOpenHistory, onOpenSettings, onOpenVolumeDashboard, onOpenPlateCalculator }: HomeProps) {
+  const today = getTodayFromSchedule(program.weeklySchedule);
+  const todayWorkout = today.workoutId ? program.workouts[today.workoutId] : null;
   const isSundayCheckin = today.day === "Dimanche";
 
   const [active, setActive] = useState<ActiveSession | null>(null);
@@ -28,7 +29,7 @@ export function Home({ onStartWorkout, onStartCheckin, onOpenHistory, onOpenSett
   useEffect(() => { setActive(storage.getActiveSession()); }, [tick]);
 
   const sessions = useMemo(() => storage.getSessions(), [tick]);
-  const exercises = useMemo(() => allExercises(), []);
+  const exercises = useMemo(() => allExercises(program.workouts), [program.workouts]);
 
   const stats = useMemo(() => {
     const week = sessionsThisWeek(sessions);
@@ -55,7 +56,7 @@ export function Home({ onStartWorkout, onStartCheckin, onOpenHistory, onOpenSett
     setTick(t => t + 1);
   };
 
-  const activeWorkout = active ? workouts[active.workoutId] : null;
+  const activeWorkout = active ? program.workouts[active.workoutId] : null;
   const activeMinutes = active ? Math.max(1, Math.floor((Date.now() - new Date(active.startedAt).getTime()) / 60000)) : 0;
 
   return (
@@ -240,12 +241,12 @@ export function Home({ onStartWorkout, onStartCheckin, onOpenHistory, onOpenSett
         </div>
 
         <div className="rounded-2xl bg-[var(--color-void-1)] border border-white/[0.05] overflow-hidden">
-          {weeklySchedule.map((day, idx) => {
+          {program.weeklySchedule.map((day, idx) => {
             const isToday = day.day === today.day;
             const isWorkout = day.type === "workout";
             const isSunday = day.day === "Dimanche";
-            const w = day.workoutId ? workouts[day.workoutId] : null;
-            const isLast = idx === weeklySchedule.length - 1;
+            const w = day.workoutId ? program.workouts[day.workoutId] : null;
+            const isLast = idx === program.weeklySchedule.length - 1;
 
             return (
               <motion.div

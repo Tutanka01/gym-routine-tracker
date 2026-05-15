@@ -14,8 +14,9 @@ const parseRepRange = (repRange: string): { min: number; max: number; label: str
 const formatKg = (value: number) => Number(value.toFixed(2));
 
 const exerciseLogs = (session: WorkoutSession, exId: string): ExerciseLog[] =>
-  logKeysForExerciseId(exId)
-    .map(key => session.logs[key])
+  Object.entries(session.logs)
+    .filter(([key, log]) => logKeysForExerciseId(exId).includes(key) || log.performedExerciseId === exId)
+    .map(([, log]) => log)
     .filter((log): log is ExerciseLog => Boolean(log));
 
 // ── A2: Epley estimated 1RM ───────────────────────────────────────────────────
@@ -75,7 +76,7 @@ export const weeklyMuscleGroupSets = (
 
   for (const session of weekSessions) {
     for (const [exId, log] of Object.entries(session.logs)) {
-      const ex = exercises.find(e => e.id === exId) ?? findExerciseByLogKey(exId)?.exercise;
+      const ex = log.performedExercise ?? exercises.find(e => e.id === exId) ?? findExerciseByLogKey(exId)?.exercise;
       if (!ex?.muscleGroups) continue;
       const hardSets = log.sets.filter(s => s.isComplete && Number(s.weight) > 0).length;
       for (const mg of ex.muscleGroups) {
@@ -267,7 +268,8 @@ export const getSessionTarget = (
   const lastWeight = Number(topSet.weight);
   const suggestion = autoProgression(sessions, exId, repRange, isCompound);
   const suggestedWeight = suggestion?.nextWeight ?? lastWeight;
-  const adjustedWeight = readiness < 1 ? suggestedWeight * readiness : suggestedWeight;
+  const intensityCap = readiness < 1 ? Math.max(0.95, readiness) : 1;
+  const adjustedWeight = suggestedWeight * intensityCap;
   const targetWeight = formatKg(Math.max(0, roundToIncrement(adjustedWeight, 1.25)));
 
   return {
@@ -275,7 +277,7 @@ export const getSessionTarget = (
     reps,
     action: suggestion?.action ?? 'maintain',
     reason: readiness < 1
-      ? `${suggestion?.reason ?? 'Maintenir le poids actuel'}; ajuste a la forme du jour`
+      ? `${suggestion?.reason ?? 'Maintenir le poids actuel'}; garde 1 RIR de marge si besoin`
       : suggestion?.reason ?? 'Maintenir le poids actuel',
     deltaKg: formatKg(targetWeight - lastWeight),
     lastWeight,

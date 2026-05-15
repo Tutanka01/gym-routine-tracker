@@ -2,6 +2,15 @@
 // localStorage today, but versioned + namespaced so we can migrate to IndexedDB later.
 // Active sessions are auto-saved on every keystroke so a tab reload never loses work.
 
+import {
+  defaultWeeklySchedule,
+  defaultWorkouts,
+  trackedExercises,
+  type Exercise,
+  type WeekDay,
+  type Workout,
+} from '../data';
+
 export const SCHEMA_VERSION = 1;
 
 const KEYS = {
@@ -9,6 +18,7 @@ const KEYS = {
   checkins: 'gym.checkins.v1',
   active: 'gym.active.v1',
   settings: 'gym.settings.v1',
+  program: 'gym.program.v1',
 } as const;
 
 export type SetType = 'normal' | 'drop' | 'cluster' | 'superset';
@@ -24,7 +34,12 @@ export type SetData = {
   supersetWith?: string;
 };
 
-export type ExerciseLog = { sets: SetData[]; displayName?: string };
+export type ExerciseLog = {
+  sets: SetData[];
+  displayName?: string;
+  performedExerciseId?: string;
+  performedExercise?: Exercise;
+};
 
 export type Readiness = { sleep: number; energy: number };
 
@@ -65,10 +80,45 @@ export type AppSettings = {
   vibrate: boolean;
 };
 
+export type ProgramData = {
+  v: number;
+  workouts: Record<string, Workout>;
+  weeklySchedule: WeekDay[];
+  library: Exercise[];
+};
+
 const DEFAULT_SETTINGS: AppSettings = {
   defaultRest: 90,
   soundOn: true,
   vibrate: true,
+};
+
+const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
+
+export const defaultProgram = (): ProgramData => ({
+  v: SCHEMA_VERSION,
+  workouts: clone(defaultWorkouts),
+  weeklySchedule: clone(defaultWeeklySchedule),
+  library: trackedExercises(defaultWorkouts).map(ex => clone(ex)),
+});
+
+const sanitizeProgram = (payload: Partial<ProgramData> | null | undefined): ProgramData => {
+  const base = defaultProgram();
+  if (!payload || typeof payload !== 'object') return base;
+  const workouts = payload.workouts && typeof payload.workouts === 'object' ? payload.workouts : base.workouts;
+  const weeklySchedule = Array.isArray(payload.weeklySchedule) && payload.weeklySchedule.length === 7
+    ? payload.weeklySchedule
+    : base.weeklySchedule;
+  const library = Array.isArray(payload.library) && payload.library.length > 0
+    ? payload.library
+    : trackedExercises(workouts).map(ex => clone(ex));
+
+  return {
+    v: SCHEMA_VERSION,
+    workouts,
+    weeklySchedule,
+    library,
+  };
 };
 
 function read<T>(key: string, fallback: T): T {
@@ -148,6 +198,17 @@ export const storage = {
 
   saveSettings: (s: AppSettings) => write(KEYS.settings, s),
 
+  // ---- Editable training program ----
+  getProgram: (): ProgramData => sanitizeProgram(read<Partial<ProgramData> | null>(KEYS.program, null)),
+
+  saveProgram: (p: Omit<ProgramData, 'v'> | ProgramData) => {
+    write<ProgramData>(KEYS.program, sanitizeProgram({ ...p, v: SCHEMA_VERSION }));
+  },
+
+  resetProgram: () => {
+    write(KEYS.program, defaultProgram());
+  },
+
   // ---- Backup / restore ----
   exportAll: () => ({
     schemaVersion: SCHEMA_VERSION,
@@ -155,6 +216,7 @@ export const storage = {
     sessions: storage.getSessions(),
     checkins: storage.getCheckins(),
     settings: storage.getSettings(),
+    program: storage.getProgram(),
   }),
 
   importAll: (payload: any, mode: 'replace' | 'merge' = 'merge') => {
@@ -176,6 +238,7 @@ export const storage = {
     }
 
     if (payload.settings) write(KEYS.settings, { ...DEFAULT_SETTINGS, ...payload.settings });
+    if (payload.program) storage.saveProgram(payload.program);
   },
 
   wipeAll: () => {
@@ -184,6 +247,7 @@ export const storage = {
       localStorage.removeItem(KEYS.checkins);
       localStorage.removeItem(KEYS.active);
       localStorage.removeItem(KEYS.settings);
+      localStorage.removeItem(KEYS.program);
     } catch {}
   },
 };

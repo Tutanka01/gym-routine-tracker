@@ -1,18 +1,19 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { ChevronLeft, Trophy, TrendingUp, TrendingDown, Search, Calendar, Trash2, MessageSquare } from "lucide-react";
-import { storage, WorkoutSession, ExerciseLog } from "../lib/storage";
+import { storage, WorkoutSession, ExerciseLog, ProgramData } from "../lib/storage";
 import { workouts, trackedExercises, findExercise } from "../data";
 import { bestSetEver, exerciseProgression, fmtDate, fmtRelativeShort, fmtVol, sessionVolume, setVolume, topSet } from "../lib/stats";
 import { Sparkline } from "./Sparkline";
 
 interface Props {
   onClose: () => void;
+  program: ProgramData;
 }
 
 type Tab = "exercises" | "sessions";
 
-export function History({ onClose }: Props) {
+export function History({ program, onClose }: Props) {
   const [tab, setTab] = useState<Tab>("exercises");
   const [query, setQuery] = useState("");
   const [openExId, setOpenExId] = useState<string | null>(null);
@@ -21,8 +22,8 @@ export function History({ onClose }: Props) {
 
   const sessions = useMemo(() => storage.getSessions(), [refreshKey]);
   const exercises = useMemo(
-    () => trackedExercises().filter(ex => ex.name.toLowerCase().includes(query.toLowerCase())),
-    [query],
+    () => trackedExercises(program.workouts).filter(ex => ex.name.toLowerCase().includes(query.toLowerCase())),
+    [program.workouts, query],
   );
 
   const deleteSession = (id: string) => {
@@ -81,7 +82,7 @@ export function History({ onClose }: Props) {
               const prog = exerciseProgression(sessions, ex.id);
               const best = bestSetEver(sessions, ex.id);
               const open = openExId === ex.id;
-              const ctx = findExercise(ex.id);
+              const ctx = findExercise(ex.id, program.workouts);
               const values = prog.map(p => setVolume(p.top!));
               const trend = values.length > 1 ? values[values.length - 1] - values[0] : 0;
               const trendUp = trend > 0;
@@ -179,7 +180,7 @@ export function History({ onClose }: Props) {
               </div>
             )}
             {sessions.slice().reverse().map(s => {
-              const w = workouts[s.workoutId];
+              const w = program.workouts[s.workoutId] ?? workouts[s.workoutId];
               const vol = s.totalVolume ?? sessionVolume(s);
               const setsCount = (Object.values(s.logs) as ExerciseLog[]).flatMap(l => l.sets).filter(x => x.isComplete).length;
               return (
@@ -241,17 +242,19 @@ export function History({ onClose }: Props) {
                   {fmtDate(openSession.date)}
                 </div>
                 <h3 className="font-display font-black uppercase text-[#C0D0F0] mb-4" style={{ fontSize: '32px', lineHeight: 0.9 }}>
-                  {workouts[openSession.workoutId]?.name.split("—").pop()?.trim() || openSession.workoutName}
+                  {(program.workouts[openSession.workoutId] ?? workouts[openSession.workoutId])?.name.split("—").pop()?.trim() || openSession.workoutName}
                 </h3>
 
                 <div className="space-y-3">
                   {(Object.entries(openSession.logs) as [string, ExerciseLog][]).map(([exId, log]) => {
-                    const ex = workouts[openSession.workoutId]?.exercises.find(e => e.id === exId);
-                    if (!ex) return null;
+                    const ex = log.performedExercise
+                      ?? program.workouts[openSession.workoutId]?.exercises.find(e => e.id === exId)
+                      ?? workouts[openSession.workoutId]?.exercises.find(e => e.id === exId);
+                    if (!ex && !log.displayName) return null;
                     const top = topSet(log.sets);
                     return (
                       <div key={exId} className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.05]">
-                        <div className="font-bold text-sm mb-2 text-[#C0D0F0]">{log.displayName || ex.name}</div>
+                        <div className="font-bold text-sm mb-2 text-[#C0D0F0]">{log.displayName || ex?.name || exId}</div>
                         <div className="grid grid-cols-3 gap-1.5">
                           {log.sets.map((set, i) => (
                             <div

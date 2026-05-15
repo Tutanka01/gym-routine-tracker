@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { motion } from "motion/react";
 import { ChevronLeft, TrendingUp } from "lucide-react";
-import { storage } from "../lib/storage";
+import { storage, ProgramData } from "../lib/storage";
 import { allExercises } from "../data";
 import {
   VOLUME_LANDMARKS,
@@ -12,6 +12,7 @@ import {
 
 interface VolumeDashboardProps {
   onClose: () => void;
+  program: ProgramData;
 }
 
 const STATUS_ORDER: Array<ReturnType<typeof getVolumeStatus>> = [
@@ -24,9 +25,9 @@ weekStart.setDate(now.getDate() - ((now.getDay() + 6) % 7));
 weekStart.setHours(0, 0, 0, 0);
 const weekLabel = weekStart.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
 
-export function VolumeDashboard({ onClose }: VolumeDashboardProps) {
+export function VolumeDashboard({ program, onClose }: VolumeDashboardProps) {
   const sessions = useMemo(() => storage.getSessions(), []);
-  const exercises = useMemo(() => allExercises(), []);
+  const exercises = useMemo(() => allExercises(program.workouts), [program.workouts]);
   const weeklySets = useMemo(() => weeklyMuscleGroupSets(sessions, exercises), [sessions, exercises]);
 
   const rows = useMemo(() =>

@@ -8,5 +8,12 @@
   "background_color": "#06070a",
   "theme_color": "#06070a",
   "lang": "fr",
-  "icons": []
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
 }

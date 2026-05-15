@@ -36,7 +36,7 @@ export type WeekDay = {
   description?: string;
 };
 
-export const workouts: Record<string, Workout> = {
+export const defaultWorkouts: Record<string, Workout> = {
   "upper-a": {
     id: "upper-a",
     name: "SÉANCE 1 — UPPER A",
@@ -96,7 +96,7 @@ export const workouts: Record<string, Workout> = {
   }
 };
 
-export const weeklySchedule: WeekDay[] = [
+export const defaultWeeklySchedule: WeekDay[] = [
   { day: "Lundi", type: "workout", workoutId: "upper-a", description: "Matin : Upper A" },
   { day: "Mardi", type: "workout", workoutId: "lower-a", description: "Matin : Lower A" },
   { day: "Mercredi", type: "rest", description: "Repos actif / marche" },
@@ -107,43 +107,56 @@ export const weeklySchedule: WeekDay[] = [
 ];
 
 export function getToday(): WeekDay {
+  return getTodayFromSchedule(defaultWeeklySchedule);
+}
+
+export function getTodayFromSchedule(schedule: WeekDay[]): WeekDay {
   const date = new Date();
   let dayIndex = date.getDay();
   if (dayIndex === 0) dayIndex = 7;
-  return weeklySchedule[dayIndex - 1];
+  return schedule[dayIndex - 1] ?? defaultWeeklySchedule[dayIndex - 1];
 }
 
-export const allExercises = (): Exercise[] =>
-  Object.values(workouts).flatMap(w => w.exercises);
+export const workouts = defaultWorkouts;
+export const weeklySchedule = defaultWeeklySchedule;
+
+export const allExercises = (source: Record<string, Workout> = defaultWorkouts): Exercise[] =>
+  Object.values(source).flatMap(w => w.exercises);
 
 export const trackingIdFor = (exercise: Exercise): string => exercise.trackingId ?? exercise.id;
 
 export const exerciseLogKeys = (exercise: Exercise): string[] =>
   Array.from(new Set([exercise.id, trackingIdFor(exercise), ...(exercise.legacyIds ?? [])]));
 
-export const findExerciseByLogKey = (logKey: string): { workout: Workout; exercise: Exercise } | null => {
-  for (const w of Object.values(workouts)) {
+export const findExerciseByLogKey = (
+  logKey: string,
+  source: Record<string, Workout> = defaultWorkouts,
+): { workout: Workout; exercise: Exercise } | null => {
+  for (const w of Object.values(source)) {
     const ex = w.exercises.find(e => exerciseLogKeys(e).includes(logKey));
     if (ex) return { workout: w, exercise: ex };
   }
   return null;
 };
 
-export const logKeysForExerciseId = (exerciseId: string): string[] => {
-  const source = findExercise(exerciseId)?.exercise ?? findExerciseByLogKey(exerciseId)?.exercise;
-  if (!source) return [exerciseId];
-  const trackingId = trackingIdFor(source);
+export const logKeysForExerciseId = (
+  exerciseId: string,
+  source: Record<string, Workout> = defaultWorkouts,
+): string[] => {
+  const found = findExercise(exerciseId, source)?.exercise ?? findExerciseByLogKey(exerciseId, source)?.exercise;
+  if (!found) return [exerciseId];
+  const trackingId = trackingIdFor(found);
   return Array.from(new Set(
-    allExercises()
+    allExercises(source)
       .filter(ex => trackingIdFor(ex) === trackingId)
       .flatMap(exerciseLogKeys),
   ));
 };
 
-export const trackedExercises = (): Exercise[] => {
+export const trackedExercises = (source: Record<string, Workout> = defaultWorkouts): Exercise[] => {
   const seen = new Set<string>();
   const result: Exercise[] = [];
-  for (const ex of allExercises()) {
+  for (const ex of allExercises(source)) {
     const trackingId = trackingIdFor(ex);
     if (seen.has(trackingId)) continue;
     seen.add(trackingId);
@@ -152,8 +165,11 @@ export const trackedExercises = (): Exercise[] => {
   return result;
 };
 
-export const findExercise = (id: string): { workout: Workout; exercise: Exercise } | null => {
-  for (const w of Object.values(workouts)) {
+export const findExercise = (
+  id: string,
+  source: Record<string, Workout> = defaultWorkouts,
+): { workout: Workout; exercise: Exercise } | null => {
+  for (const w of Object.values(source)) {
     const ex = w.exercises.find(e => e.id === id);
     if (ex) return { workout: w, exercise: ex };
   }
