@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Plus, Minus, X, Play, Pause } from "lucide-react";
+import { cancelRestNotification, scheduleRestNotification, signalRestFinished } from "../lib/native";
 
 interface RestTimerProps {
   time: number;
@@ -39,15 +40,32 @@ export function RestTimer({ time, isActive, restartKey, onClose, soundOn = true,
       setTimeLeft(time);
       setPaused(false);
       buzzedRef.current = false;
+      void scheduleRestNotification(time);
+    } else {
+      void cancelRestNotification();
     }
+
+    return () => {
+      void cancelRestNotification();
+    };
   }, [isActive, time, restartKey]);
+
+  useEffect(() => {
+    if (!isActive) return;
+    if (paused) {
+      void cancelRestNotification();
+    } else if (timeLeft > 0) {
+      void scheduleRestNotification(timeLeft);
+    }
+  }, [paused]);
 
   useEffect(() => {
     if (!isActive || paused) return;
     if (timeLeft <= 0) {
       if (!buzzedRef.current) {
         buzzedRef.current = true;
-        if (vibrate && navigator.vibrate) navigator.vibrate([180, 80, 180, 80, 280]);
+        void cancelRestNotification();
+        void signalRestFinished(vibrate);
         if (soundOn) beep();
       }
       const dismiss = setTimeout(onClose, 4000);

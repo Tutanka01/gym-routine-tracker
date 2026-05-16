@@ -2,6 +2,7 @@ import { useRef, useState, type ReactNode } from "react";
 import { ChevronLeft, Download, Upload, Volume2, VolumeX, Vibrate, Trash2, Database, Shield } from "lucide-react";
 import { storage, AppSettings } from "../lib/storage";
 import { ProgramBuilder } from "./ProgramBuilder";
+import { shareBackupFile } from "../lib/native";
 
 interface Props { onClose: () => void; onProgramChanged?: () => void; }
 
@@ -25,13 +26,22 @@ export function Settings({ onClose, onProgramChanged }: Props) {
     setTimeout(() => setFeedback(null), 2200);
   };
 
-  const exportData = () => {
+  const exportData = async () => {
     const payload = storage.exportAll();
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const data = JSON.stringify(payload, null, 2);
+    const stamp = new Date().toISOString().slice(0, 10);
+    const filename = `routine-backup-${stamp}.json`;
+
+    const shared = await shareBackupFile(filename, data);
+    if (shared) {
+      flash(`Sauvegarde exportée (${payload.sessions.length} séances)`);
+      return;
+    }
+
+    const blob = new Blob([data], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    const stamp = new Date().toISOString().slice(0, 10);
-    a.href = url; a.download = `routine-backup-${stamp}.json`;
+    a.href = url; a.download = filename;
     document.body.appendChild(a); a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);

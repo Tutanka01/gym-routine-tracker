@@ -117,6 +117,29 @@ npm run dev
 
 Runs on `http://localhost:3000` with hot reload.
 
+## iOS app
+
+The iOS shell is built with Capacitor and lives in `ios/`. Use Node 22+.
+
+```bash
+npm install
+npm run ios:sync
+npm run ios:open
+```
+
+`ios:sync` builds the Vite app, copies the static assets into the native
+project, and syncs Capacitor plugins. From Xcode, select a simulator or a real
+iPhone and run the `App` scheme.
+
+Native integrations currently used:
+
+- Preferences mirror for the local training data, so iOS has a native backup of
+  the app's browser storage.
+- Local notifications for rest timers, so the alert still fires if iOS suspends
+  the WebView while the phone is locked.
+- Haptics for PR/rest feedback on device.
+- Filesystem + Share for JSON backup export.
+
 ---
 
 *Built to be used, not admired. Open the app, lift the weights, close the app.*

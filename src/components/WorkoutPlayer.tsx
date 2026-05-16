@@ -27,6 +27,7 @@ import {
   readinessFactor,
   rirConsistencyWarning,
 } from "../lib/intelligence";
+import { signalSetComplete } from "../lib/native";
 
 interface WorkoutPlayerProps {
   workout: Workout;
@@ -288,7 +289,7 @@ export function WorkoutPlayer({ workout, program, onClose, resumeFromActive }: W
 
     if (willFlashPR && prKey) {
       setPrFlashKey(prKey);
-      if (navigator.vibrate) navigator.vibrate([40, 50, 40, 50, 120]);
+      void signalSetComplete();
       setTimeout(() => setPrFlashKey(k => (k === prKey ? null : k)), 1500);
     }
   };
