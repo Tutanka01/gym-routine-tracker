@@ -75,7 +75,16 @@ export function RestTimer({ time, isActive, restartKey, onClose, soundOn = true,
     return () => clearInterval(t);
   }, [isActive, timeLeft, paused, soundOn, vibrate, onClose]);
 
-  const addTime = (s: number) => setTimeLeft(t => Math.max(0, t + s));
+  const addTime = (s: number) => {
+    setTimeLeft(t => {
+      const next = Math.max(0, t + s);
+      if (isActive && !paused) {
+        if (next > 0) void scheduleRestNotification(next);
+        else void cancelRestNotification();
+      }
+      return next;
+    });
+  };
 
   const mins = Math.floor(Math.max(0, timeLeft) / 60);
   const secs = Math.max(0, timeLeft) % 60;
@@ -93,7 +102,7 @@ export function RestTimer({ time, isActive, restartKey, onClose, soundOn = true,
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 160, opacity: 0, scale: 0.96 }}
           transition={{ type: "spring", stiffness: 380, damping: 32 }}
-          className="absolute bottom-28 left-4 right-4 z-50"
+          className="absolute bottom-28 safe-rest-timer left-4 right-4 z-50"
         >
           <div className={`relative overflow-hidden rounded-2xl border ${
             isDone

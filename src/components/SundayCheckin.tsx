@@ -48,7 +48,7 @@ export function SundayCheckin({ onClose }: Props) {
 
   if (done) {
     return (
-      <div className="flex flex-col h-screen justify-center items-center bg-[var(--color-void-0)] text-[#C0D0F0] pb-20 max-w-md mx-auto">
+      <div className="flex flex-col h-screen justify-center items-center bg-[var(--color-void-0)] text-[#C0D0F0] pb-20 safe-scroll max-w-md mx-auto">
         <motion.div
           initial={{ scale: 0, rotate: -90 }}
           animate={{ scale: 1, rotate: 0 }}
@@ -67,8 +67,8 @@ export function SundayCheckin({ onClose }: Props) {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-[var(--color-void-0)] text-[#C0D0F0] max-w-md mx-auto relative">
-      <div className="flex items-center p-4 sticky top-0 bg-[var(--color-void-0)]/85 backdrop-blur-xl z-10 border-b border-white/[0.05]">
+    <div className="flex flex-col min-h-screen safe-shell bg-[var(--color-void-0)] text-[#C0D0F0] max-w-md mx-auto relative">
+      <div className="flex items-center p-4 safe-header sticky top-0 bg-[var(--color-void-0)]/85 backdrop-blur-xl z-10 border-b border-white/[0.05]">
         <button
           onClick={onClose}
           aria-label="Retour"
@@ -84,7 +84,7 @@ export function SundayCheckin({ onClose }: Props) {
         <div className="text-[10px] tracking-[0.3em] font-bold uppercase text-[var(--color-signal)] mb-2" style={{ opacity: 0.7 }}>
           Semaine #{checkins.length + 1}
         </div>
-        <h2 className="font-display font-black uppercase text-[#C0D0F0] mb-6" style={{ fontSize: '44px', lineHeight: 0.88, letterSpacing: '-0.01em' }}>
+        <h2 className="font-display font-black uppercase text-[#C0D0F0] mb-6" style={{ fontSize: '44px', lineHeight: 0.88, letterSpacing: 0 }}>
           CHECK-IN<br/>HEBDO
         </h2>
 
@@ -94,7 +94,7 @@ export function SundayCheckin({ onClose }: Props) {
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center text-slate-300 gap-2">
                 <Weight className="w-4 h-4 text-blue-400" />
-                <span className="font-bold text-sm tracking-tight">Poids à jeun</span>
+                <span className="font-bold text-sm">Poids à jeun</span>
               </div>
               {last && <span className="text-[10px] font-mono tnum text-slate-600">Dernier : {last.weight || "—"} kg · {fmtRelativeShort(last.date)}</span>}
             </div>
@@ -123,7 +123,7 @@ export function SundayCheckin({ onClose }: Props) {
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center text-slate-300 gap-2">
                 <Ruler className="w-4 h-4 text-[var(--color-signal)]" />
-                <span className="font-bold text-sm tracking-tight">Tour de taille</span>
+                <span className="font-bold text-sm">Tour de taille</span>
               </div>
               {last && <span className="text-[10px] font-mono tnum text-slate-600">Dernier : {last.waist || "—"} cm</span>}
             </div>
@@ -162,7 +162,7 @@ export function SundayCheckin({ onClose }: Props) {
               <Camera className="w-6 h-6" />
             </div>
             <div className="flex-1">
-              <div className="font-bold text-base tracking-tight">{photosTaken ? "Photos prises" : "Prendre ses photos"}</div>
+              <div className="font-bold text-base">{photosTaken ? "Photos prises" : "Prendre ses photos"}</div>
               <div className="text-xs text-slate-500 mt-0.5">Face, dos, profil</div>
             </div>
             <div className={`w-7 h-7 rounded-full border-2 flex items-center justify-center ${
@@ -176,10 +176,10 @@ export function SundayCheckin({ onClose }: Props) {
         </div>
       </div>
 
-      <div className="p-5 sticky bottom-0 bg-gradient-to-t from-[var(--color-void-0)] via-[var(--color-void-0)] to-transparent">
+      <div className="p-5 safe-bottom-bar sticky bottom-0 bg-gradient-to-t from-[var(--color-void-0)] via-[var(--color-void-0)] to-transparent">
         <button
           onClick={handleSave}
-          className="w-full text-black font-bold py-4 rounded-xl text-lg active:scale-[0.98] transition flex items-center justify-center gap-2 font-display tracking-tight"
+          className="w-full text-black font-bold py-4 rounded-xl text-lg active:scale-[0.98] transition flex items-center justify-center gap-2 font-display"
           style={{ background: 'var(--color-signal)', boxShadow: '0 6px 20px rgba(13,223,184,0.25)' }}
         >
           <Check className="w-5 h-5" />

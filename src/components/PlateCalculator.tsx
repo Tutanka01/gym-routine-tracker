@@ -36,7 +36,7 @@ export function PlateCalculator({ onClose, initialWeight = 100 }: PlateCalculato
   return (
     <div className="flex flex-col h-screen bg-[var(--color-void-0)] text-[#C0D0F0] overflow-hidden max-w-md mx-auto">
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-white/[0.05] bg-[var(--color-void-0)]/90 backdrop-blur-md sticky top-0 z-10">
+      <div className="flex items-center gap-3 px-4 py-3 safe-header border-b border-white/[0.05] bg-[var(--color-void-0)]/90 backdrop-blur-md sticky top-0 z-10">
         <button onClick={onClose} className="p-2 -ml-2 text-slate-500 hover:text-slate-300 transition-colors">
           <ChevronLeft className="w-7 h-7" />
         </button>
@@ -48,7 +48,7 @@ export function PlateCalculator({ onClose, initialWeight = 100 }: PlateCalculato
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto view-no-scrollbar px-4 py-5 space-y-5">
+      <div className="flex-1 overflow-y-auto view-no-scrollbar px-4 py-5 safe-scroll space-y-5">
         {/* Target weight */}
         <div className="rounded-2xl bg-[var(--color-void-1)] border border-white/[0.05] p-5">
           <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-4">Poids cible</div>

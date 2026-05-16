@@ -72,8 +72,8 @@ export function Settings({ onClose, onProgramChanged }: Props) {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-[var(--color-void-0)] text-[#C0D0F0] max-w-md mx-auto">
-      <div className="sticky top-0 z-10 bg-[var(--color-void-0)]/85 backdrop-blur-xl border-b border-white/[0.05]">
+    <div className="flex flex-col min-h-screen safe-shell bg-[var(--color-void-0)] text-[#C0D0F0] max-w-md mx-auto">
+      <div className="sticky top-0 z-10 safe-header bg-[var(--color-void-0)]/85 backdrop-blur-xl border-b border-white/[0.05]">
         <div className="flex items-center p-4">
           <button
             onClick={onClose}
@@ -87,7 +87,7 @@ export function Settings({ onClose, onProgramChanged }: Props) {
         </div>
       </div>
 
-      <div className="flex-1 px-4 py-5 space-y-6 pb-12">
+      <div className="flex-1 px-4 py-5 space-y-6 pb-12 safe-scroll">
         {/* Stats summary */}
         <div className="rounded-2xl bg-[var(--color-void-1)] border border-white/[0.05] p-5">
           <div className="flex items-center gap-2 text-[10px] tracking-[0.25em] uppercase font-bold text-slate-500 mb-4">
@@ -192,7 +192,7 @@ export function Settings({ onClose, onProgramChanged }: Props) {
       </div>
 
       {feedback && (
-        <div className="fixed bottom-6 left-4 right-4 max-w-md mx-auto z-30">
+        <div className="fixed bottom-6 safe-toast left-4 right-4 max-w-md mx-auto z-30">
           <div className="text-black font-bold text-sm px-4 py-3 rounded-xl shadow-lg text-center"
             style={{ background: 'var(--color-signal)', boxShadow: '0 8px 24px rgba(13,223,184,0.3)' }}>
             {feedback}

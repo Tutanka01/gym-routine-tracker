@@ -41,7 +41,7 @@ export function SetNoteSheet({
             exit={{ y: "100%" }}
             transition={{ type: "spring", stiffness: 400, damping: 36 }}
             onClick={e => e.stopPropagation()}
-            className="w-full bg-[var(--color-void-1)] border-t border-white/[0.07] rounded-t-3xl px-5 pb-10 pt-5"
+            className="w-full bg-[var(--color-void-1)] border-t border-white/[0.07] rounded-t-3xl px-5 pb-10 pt-5 safe-sheet"
           >
             <div className="w-10 h-1 rounded-full bg-white/10 mx-auto mb-5" />
             <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--color-signal)] mb-2">
@@ -83,4 +83,3 @@ export function SetNoteSheet({
     </AnimatePresence>
   );
 }
-

@@ -671,7 +671,7 @@ export function WorkoutPlayer({ workout, program, onClose, resumeFromActive }: W
       )}
 
       {/* Top Bar */}
-      <div className="flex items-center justify-between px-4 py-3 z-10 bg-[var(--color-void-0)]/90 backdrop-blur-md sticky top-0 border-b border-white/[0.05]">
+      <div className="flex items-center justify-between px-4 py-3 safe-header z-10 bg-[var(--color-void-0)]/90 backdrop-blur-md sticky top-0 border-b border-white/[0.05]">
         <button onClick={() => setShowAbandonConfirm(true)}
           className="p-2 -ml-2 text-slate-500 hover:text-slate-300 active:text-white transition-colors">
           <ChevronLeft className="w-7 h-7" />
@@ -779,7 +779,7 @@ export function WorkoutPlayer({ workout, program, onClose, resumeFromActive }: W
               </div>
 
               <h2 className="font-display font-black uppercase text-[#C0D0F0] leading-none mb-3"
-                style={{ fontSize: '44px', letterSpacing: '-0.01em' }}>
+                style={{ fontSize: '44px', letterSpacing: 0 }}>
                 {displayNameFor(currentExercise.id)}
               </h2>
 
@@ -856,7 +856,7 @@ export function WorkoutPlayer({ workout, program, onClose, resumeFromActive }: W
 
       {/* Bottom bar */}
       {step < finishStep && (
-        <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-[var(--color-void-0)] via-[var(--color-void-0)]/90 to-transparent max-w-md mx-auto z-20 pointer-events-none">
+        <div className="fixed bottom-0 left-0 right-0 p-4 safe-bottom-bar bg-gradient-to-t from-[var(--color-void-0)] via-[var(--color-void-0)]/90 to-transparent max-w-md mx-auto z-20 pointer-events-none">
           <div className="flex gap-3 pointer-events-auto">
             {step > -1 && step < finishStep && (
               <button onClick={prevStep}
@@ -904,7 +904,7 @@ export function WorkoutPlayer({ workout, program, onClose, resumeFromActive }: W
             <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
               transition={{ type: "spring", stiffness: 400, damping: 36 }}
               onClick={e => e.stopPropagation()}
-              className="w-full bg-[var(--color-void-1)] border-t border-white/[0.07] rounded-t-3xl px-5 pb-10 pt-5">
+              className="w-full bg-[var(--color-void-1)] border-t border-white/[0.07] rounded-t-3xl px-5 pb-10 pt-5 safe-sheet">
               <div className="w-10 h-1 rounded-full bg-white/10 mx-auto mb-5" />
               <div className="flex items-center gap-2 mb-2">
                 <AlertCircle className="w-5 h-5 text-[var(--color-acid)]" />
@@ -950,7 +950,7 @@ export function WorkoutPlayer({ workout, program, onClose, resumeFromActive }: W
             <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
               transition={{ type: "spring", stiffness: 400, damping: 36 }}
               onClick={e => e.stopPropagation()}
-              className="w-full bg-[var(--color-void-1)] border-t border-white/[0.07] rounded-t-3xl px-5 pb-10 pt-5">
+              className="w-full bg-[var(--color-void-1)] border-t border-white/[0.07] rounded-t-3xl px-5 pb-10 pt-5 safe-sheet">
               <div className="w-10 h-1 rounded-full bg-white/10 mx-auto mb-5" />
               <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-4">
                 Type de set — Set {setTypeMenu.setIndex + 1}
@@ -997,7 +997,7 @@ export function WorkoutPlayer({ workout, program, onClose, resumeFromActive }: W
             <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
               transition={{ type: "spring", stiffness: 400, damping: 36 }}
               onClick={e => e.stopPropagation()}
-              className="w-full bg-[var(--color-void-1)] border-t border-white/[0.07] rounded-t-3xl px-5 pb-10 pt-5">
+              className="w-full bg-[var(--color-void-1)] border-t border-white/[0.07] rounded-t-3xl px-5 pb-10 pt-5 safe-sheet">
               <div className="w-10 h-1 rounded-full bg-white/10 mx-auto mb-5" />
               <p className="font-display font-black text-[#C0D0F0] mb-1 uppercase" style={{ fontSize: '28px' }}>Abandonner ?</p>
               <p className="text-slate-500 text-sm mb-6 leading-relaxed">Ta progression ne sera pas enregistrée.</p>

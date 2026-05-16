@@ -137,7 +137,7 @@ export function BenchMode({ isRestActive, restDuration, restartKey, nextExercise
               style={{
                 fontSize: 'clamp(120px, 28vw, 220px)',
                 lineHeight: 0.85,
-                letterSpacing: '-0.02em',
+                letterSpacing: 0,
                 color: done ? 'var(--color-signal)' : '#C0D0F0',
                 textShadow: done ? '0 0 60px rgba(13,223,184,0.4)' : 'none',
               }}

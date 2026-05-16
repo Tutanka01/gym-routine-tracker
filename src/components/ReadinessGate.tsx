@@ -77,7 +77,7 @@ export function ReadinessGate({ onStart }: ReadinessGateProps) {
           animate={{ y: 0 }}
           exit={{ y: "100%" }}
           transition={{ type: "spring", stiffness: 380, damping: 34 }}
-          className="w-full bg-[var(--color-void-1)] border-t border-white/[0.08] rounded-t-3xl px-5 pt-5 pb-10"
+          className="w-full bg-[var(--color-void-1)] border-t border-white/[0.08] rounded-t-3xl px-5 pt-5 pb-10 safe-sheet"
         >
           {/* Handle */}
           <div className="w-10 h-1 rounded-full bg-white/10 mx-auto mb-6" />

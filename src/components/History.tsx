@@ -34,9 +34,9 @@ export function History({ program, onClose }: Props) {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-[var(--color-void-0)] text-[#C0D0F0] max-w-md mx-auto relative">
+    <div className="flex flex-col min-h-screen safe-shell bg-[var(--color-void-0)] text-[#C0D0F0] max-w-md mx-auto relative">
       {/* Header */}
-      <div className="sticky top-0 z-20 bg-[var(--color-void-0)]/90 backdrop-blur-xl border-b border-white/[0.05]">
+      <div className="sticky top-0 z-20 safe-header bg-[var(--color-void-0)]/90 backdrop-blur-xl border-b border-white/[0.05]">
         <div className="flex items-center p-4">
           <button
             onClick={onClose}
@@ -60,7 +60,7 @@ export function History({ program, onClose }: Props) {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto pb-12 view-no-scrollbar">
+      <div className="flex-1 overflow-y-auto pb-12 safe-scroll view-no-scrollbar">
         {tab === "exercises" && (
           <div className="px-4 pt-4 space-y-2">
             {/* Search */}
@@ -232,7 +232,7 @@ export function History({ program, onClose }: Props) {
               exit={{ y: "100%" }}
               transition={{ type: "spring", stiffness: 360, damping: 36 }}
               onClick={e => e.stopPropagation()}
-              className="w-full bg-[var(--color-void-1)] border-t border-white/[0.08] rounded-t-[28px] max-h-[85vh] overflow-y-auto view-no-scrollbar"
+              className="w-full bg-[var(--color-void-1)] border-t border-white/[0.08] rounded-t-[28px] max-h-[85vh] overflow-y-auto safe-sheet view-no-scrollbar"
             >
               <div className="px-5 pt-4 pb-2 flex items-center justify-center">
                 <div className="w-10 h-1 rounded-full bg-white/10" />

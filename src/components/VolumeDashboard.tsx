@@ -51,7 +51,7 @@ export function VolumeDashboard({ program, onClose }: VolumeDashboardProps) {
   return (
     <div className="flex flex-col h-screen bg-[var(--color-void-0)] text-[#C0D0F0] overflow-hidden max-w-md mx-auto">
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-white/[0.05] bg-[var(--color-void-0)]/90 backdrop-blur-md sticky top-0 z-10">
+      <div className="flex items-center gap-3 px-4 py-3 safe-header border-b border-white/[0.05] bg-[var(--color-void-0)]/90 backdrop-blur-md sticky top-0 z-10">
         <button
           onClick={onClose}
           className="p-2 -ml-2 text-slate-500 hover:text-slate-300 active:text-white transition-colors"
@@ -94,7 +94,7 @@ export function VolumeDashboard({ program, onClose }: VolumeDashboardProps) {
       </div>
 
       {/* Rows */}
-      <div className="flex-1 overflow-y-auto view-no-scrollbar px-4 py-3 space-y-3">
+      <div className="flex-1 overflow-y-auto view-no-scrollbar px-4 py-3 safe-scroll space-y-3">
         {rows.map((row, i) => {
           const meta = volumeStatusMeta[row.status];
           const maxDisplay = row.mrv + 4;

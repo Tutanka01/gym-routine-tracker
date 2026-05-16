@@ -38,7 +38,7 @@ Routine Tracker is a single-purpose tool built around one program: a 4-day Upper
 **Always**
 
 - Offline-first — works without internet once loaded
-- Zero trackers, zero telemetry, zero external requests after fonts load
+- Zero trackers, zero telemetry, zero external runtime requests
 - Export / import as JSON — your data is yours, always
 
 ---
@@ -139,6 +139,15 @@ Native integrations currently used:
   the WebView while the phone is locked.
 - Haptics for PR/rest feedback on device.
 - Filesystem + Share for JSON backup export.
+
+iOS release notes:
+
+- The Capacitor config enables foreground banners/list/sound for rest timer
+  notifications on iOS.
+- The Xcode project includes `PrivacyInfo.xcprivacy` for the Filesystem plugin's
+  required file timestamp API reason.
+- The UI uses `viewport-fit=cover`, dynamic viewport height, and safe-area
+  padding for notched iPhones and the home indicator.
 
 ---
 

@@ -60,14 +60,14 @@ export function Home({ program, onStartWorkout, onStartCheckin, onOpenHistory, o
   const activeMinutes = active ? Math.max(1, Math.floor((Date.now() - new Date(active.startedAt).getTime()) / 60000)) : 0;
 
   return (
-    <div className="flex flex-col min-h-screen bg-[var(--color-void-0)] px-4 py-6 max-w-md mx-auto pb-14">
+    <div className="flex flex-col min-h-screen safe-page bg-[var(--color-void-0)] px-4 py-6 max-w-md mx-auto pb-14">
       {/* Header */}
       <header className="mb-6 mt-1 flex items-end justify-between">
         <div>
           <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--color-signal)] mb-2" style={{ opacity: 0.75 }}>
             {new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: '2-digit', month: 'long' })}
           </div>
-          <h1 className="font-display font-black leading-[0.82] text-[#C0D0F0]" style={{ fontSize: '72px', letterSpacing: '-0.01em' }}>
+          <h1 className="font-display font-black leading-[0.82] text-[#C0D0F0]" style={{ fontSize: '72px', letterSpacing: 0 }}>
             ROUTINE
           </h1>
         </div>
@@ -185,7 +185,7 @@ export function Home({ program, onStartWorkout, onStartCheckin, onOpenHistory, o
           {isSundayCheckin ? (
             <>
               <Pretitle icon={<ClipboardCheck className="w-3.5 h-3.5" />} text="Check-in du dimanche" tone="blue" />
-              <h2 className="font-display font-black text-[#C0D0F0] mt-3 mb-2" style={{ fontSize: '38px', lineHeight: 0.9, letterSpacing: '-0.01em' }}>
+              <h2 className="font-display font-black text-[#C0D0F0] mt-3 mb-2" style={{ fontSize: '38px', lineHeight: 0.9, letterSpacing: 0 }}>
                 BILAN<br />SEMAINE
               </h2>
               <p className="text-slate-400 text-sm mb-5 leading-relaxed">Pesée, tour de taille et photos.</p>
@@ -200,7 +200,7 @@ export function Home({ program, onStartWorkout, onStartCheckin, onOpenHistory, o
           ) : today.type === "workout" && todayWorkout ? (
             <>
               <Pretitle icon={<Dumbbell className="w-3.5 h-3.5" />} text={`${todayWorkout.exercises.length} exercices`} tone="success" />
-              <h2 className="font-display font-black uppercase text-[#C0D0F0] mt-3 mb-2" style={{ fontSize: '42px', lineHeight: 0.88, letterSpacing: '-0.01em' }}>
+              <h2 className="font-display font-black uppercase text-[#C0D0F0] mt-3 mb-2" style={{ fontSize: '42px', lineHeight: 0.88, letterSpacing: 0 }}>
                 {workoutSubtitle(todayWorkout.name)}
               </h2>
               <div className="flex flex-wrap gap-1.5 mb-5">
@@ -224,7 +224,7 @@ export function Home({ program, onStartWorkout, onStartCheckin, onOpenHistory, o
           ) : (
             <>
               <Pretitle icon={<CheckCircle2 className="w-3.5 h-3.5" />} text="Repos" tone="zinc" />
-              <h2 className="font-display font-black uppercase text-[#C0D0F0] mt-3 mb-2" style={{ fontSize: '38px', lineHeight: 0.9, letterSpacing: '-0.01em' }}>
+              <h2 className="font-display font-black uppercase text-[#C0D0F0] mt-3 mb-2" style={{ fontSize: '38px', lineHeight: 0.9, letterSpacing: 0 }}>
                 RÉCUPÉRATION
               </h2>
               <p className="text-slate-400 text-sm leading-relaxed">{today.description}</p>
