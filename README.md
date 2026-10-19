@@ -38,7 +38,7 @@ Routine Tracker is a single-purpose tool built around one program: a 4-day Upper
 **Always**
 
 - Offline-first — works without internet once loaded
-- Zero trackers, zero telemetry, zero external requests after fonts load
+- Zero trackers, zero telemetry, zero external runtime requests
 - Export / import as JSON — your data is yours, always
 
 ---
@@ -116,6 +116,38 @@ npm run dev
 ```
 
 Runs on `http://localhost:3000` with hot reload.
+
+## iOS app
+
+The iOS shell is built with Capacitor and lives in `ios/`. Use Node 22+.
+
+```bash
+npm install
+npm run ios:sync
+npm run ios:open
+```
+
+`ios:sync` builds the Vite app, copies the static assets into the native
+project, and syncs Capacitor plugins. From Xcode, select a simulator or a real
+iPhone and run the `App` scheme.
+
+Native integrations currently used:
+
+- Preferences mirror for the local training data, so iOS has a native backup of
+  the app's browser storage.
+- Local notifications for rest timers, so the alert still fires if iOS suspends
+  the WebView while the phone is locked.
+- Haptics for PR/rest feedback on device.
+- Filesystem + Share for JSON backup export.
+
+iOS release notes:
+
+- The Capacitor config enables foreground banners/list/sound for rest timer
+  notifications on iOS.
+- The Xcode project includes `PrivacyInfo.xcprivacy` for the Filesystem plugin's
+  required file timestamp API reason.
+- The UI uses `viewport-fit=cover`, dynamic viewport height, and safe-area
+  padding for notched iPhones and the home indicator.
 
 ---
 

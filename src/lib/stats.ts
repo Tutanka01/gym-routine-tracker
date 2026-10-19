@@ -117,6 +117,68 @@ export const fmtVol = (n: number) => {
   return `${Math.round(n)}`;
 };
 
+/** Tonnage for display: "12,4 t" above a tonne, "850 kg" below. */
+export const fmtTonnage = (kg: number) =>
+  kg >= 1000
+    ? `${(kg / 1000).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} t`
+    : `${Math.round(kg)} kg`;
+
+/** French decimal formatting for a load: 67.5 -> "67,5". */
+export const fmtKg = (value: number | string) => {
+  const n = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(n)) return String(value);
+  return n.toLocaleString('fr-FR', { maximumFractionDigits: 2 });
+};
+
+/** Accepts "67,5" from a French keypad and returns "67.5" (digits and one dot only). */
+export const sanitizeDecimal = (raw: string) =>
+  raw.replace(',', '.').replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+
+export const workoutTitle = (name: string) => name.split('—').pop()?.trim() || name;
+
+const dayKey = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+export type WeekDayStatus = 'done' | 'missed' | 'today' | 'planned' | 'rest';
+
+/** Monday-first view of the current week: what was planned vs. actually trained. */
+export const weekOverview = (
+  sessions: WorkoutSession[],
+  schedule: Array<{ day: string; type: 'workout' | 'rest'; workoutId?: string }>,
+  now = new Date(),
+) => {
+  const monday = new Date(now);
+  monday.setHours(0, 0, 0, 0);
+  monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+  const todayKey = dayKey(now);
+  const byDay = new Map<string, WorkoutSession[]>();
+  for (const s of sessions) {
+    const k = dayKey(new Date(s.date));
+    byDay.set(k, [...(byDay.get(k) ?? []), s]);
+  }
+  return schedule.map((entry, i) => {
+    const date = new Date(monday);
+    date.setDate(monday.getDate() + i);
+    const key = dayKey(date);
+    const trained = byDay.get(key) ?? [];
+    const planned = entry.type === 'workout';
+    const isToday = key === todayKey;
+    const isPast = key < todayKey;
+    const status: WeekDayStatus =
+      trained.length > 0 ? 'done'
+        : isToday && planned ? 'today'
+        : planned && isPast ? 'missed'
+        : planned ? 'planned'
+        : 'rest';
+    return { ...entry, date, isToday, status, sessions: trained };
+  });
+};
+
+export const sessionsSince = (sessions: WorkoutSession[], days: number) => {
+  const cutoff = Date.now() - days * 86400000;
+  return sessions.filter(s => new Date(s.date).getTime() >= cutoff);
+};
+
 export const fmtDate = (iso: string) => {
   const d = new Date(iso);
   return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
@@ -127,9 +189,12 @@ export const fmtRelativeShort = (iso: string) => {
   const d = Math.floor(diff / 86400000);
   if (d === 0) return "Aujourd'hui";
   if (d === 1) return 'Hier';
-  if (d < 7) return `Il y a ${d}j`;
-  if (d < 30) return `Il y a ${Math.floor(d / 7)}sem`;
-  return fmtDate(iso);
+  if (d < 7) return `Il y a ${d} jours`;
+  if (d < 30) {
+    const w = Math.floor(d / 7);
+    return `Il y a ${w} semaine${w > 1 ? 's' : ''}`;
+  }
+  return `Le ${fmtDate(iso)}`;
 };
 
 export function estimateRemainingSec(

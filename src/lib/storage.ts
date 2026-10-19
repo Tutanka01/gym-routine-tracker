@@ -10,16 +10,10 @@ import {
   type WeekDay,
   type Workout,
 } from '../data';
+import { mirrorNativeStorageRemove, mirrorNativeStorageWrite } from './native';
+import { STORAGE_KEYS as KEYS } from './storageKeys';
 
 export const SCHEMA_VERSION = 1;
-
-const KEYS = {
-  sessions: 'gym.sessions.v1',
-  checkins: 'gym.checkins.v1',
-  active: 'gym.active.v1',
-  settings: 'gym.settings.v1',
-  program: 'gym.program.v1',
-} as const;
 
 export type SetType = 'normal' | 'drop' | 'cluster' | 'superset';
 
@@ -132,10 +126,19 @@ function read<T>(key: string, fallback: T): T {
 
 function write<T>(key: string, value: T) {
   try {
-    localStorage.setItem(key, JSON.stringify(value));
+    const encoded = JSON.stringify(value);
+    localStorage.setItem(key, encoded);
+    void mirrorNativeStorageWrite(key, encoded);
   } catch (e) {
     console.error('storage.write failed', key, e);
   }
+}
+
+function remove(key: string) {
+  try {
+    localStorage.removeItem(key);
+    void mirrorNativeStorageRemove(key);
+  } catch {}
 }
 
 export const storage = {
@@ -177,7 +180,7 @@ export const storage = {
   },
 
   clearActiveSession: () => {
-    try { localStorage.removeItem(KEYS.active); } catch {}
+    remove(KEYS.active);
   },
 
   // ---- Sunday check-ins ----
@@ -242,12 +245,10 @@ export const storage = {
   },
 
   wipeAll: () => {
-    try {
-      localStorage.removeItem(KEYS.sessions);
-      localStorage.removeItem(KEYS.checkins);
-      localStorage.removeItem(KEYS.active);
-      localStorage.removeItem(KEYS.settings);
-      localStorage.removeItem(KEYS.program);
-    } catch {}
+    remove(KEYS.sessions);
+    remove(KEYS.checkins);
+    remove(KEYS.active);
+    remove(KEYS.settings);
+    remove(KEYS.program);
   },
 };

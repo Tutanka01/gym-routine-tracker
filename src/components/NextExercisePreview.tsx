@@ -1,14 +1,6 @@
 import { ChevronRight } from "lucide-react";
-import { Workout } from "../data";
-
-function formatRest(s: number) {
-  if (s >= 60) {
-    const m = Math.floor(s / 60);
-    const sec = s % 60;
-    return sec > 0 ? `${m} min ${sec}s` : `${m} min`;
-  }
-  return `${s}s`;
-}
+import type { Workout } from "../data";
+import { formatRest } from "./WorkoutRoadmap";
 
 export function NextExercisePreview({
   workout,
@@ -27,27 +19,23 @@ export function NextExercisePreview({
 
   const nextStep = currentStep + 1;
   const next = workout.exercises[nextStep];
-  const label = next ? "SUIVANT" : workout.cooldown ? "COOLDOWN" : "TERMINER LA SEANCE";
-  const title = next ? displayNameFor(next.id) : workout.cooldown ? "Retour au calme" : "Splash final";
+  const title = next ? displayNameFor(next.id) : workout.cooldown ? "Retour au calme" : "Récapitulatif";
   const meta = next
-    ? `${next.sets} series · ${next.reps} reps · Repos ${formatRest(next.rest ?? defaultRest)}`
-    : workout.cooldown || "Voir le recap de la seance";
+    ? `${next.sets} × ${next.reps.replace("-", "–")}, repos ${formatRest(next.rest ?? defaultRest)}`
+    : workout.cooldown || "Vérifier et enregistrer la séance";
 
   return (
     <button
       type="button"
       onClick={() => onJump(nextStep)}
-      className="w-full mt-5 text-left rounded-xl bg-[var(--color-void-2)] border border-white/[0.05] px-4 py-3 active:scale-[0.99] transition"
+      className="w-full mt-6 text-left rounded-2xl border border-line px-4 py-3.5 flex items-center gap-3 active:bg-surface transition"
     >
-      <div className="flex items-center gap-3">
-        <div className="min-w-0 flex-1">
-          <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-600 mb-1">{label}</div>
-          <div className="font-semibold text-sm text-[#C0D0F0] truncate">{title}</div>
-          <div className="text-xs text-slate-500 mt-1 truncate">{meta}</div>
-        </div>
-        <ChevronRight className="w-5 h-5 text-slate-600 shrink-0" />
+      <div className="min-w-0 flex-1">
+        <div className="text-sm text-faint">Ensuite</div>
+        <div className="text-[17px] font-semibold text-ink truncate">{title}</div>
+        <div className="text-sm text-muted truncate">{meta}</div>
       </div>
+      <ChevronRight className="w-5 h-5 text-faint shrink-0" />
     </button>
   );
 }
-

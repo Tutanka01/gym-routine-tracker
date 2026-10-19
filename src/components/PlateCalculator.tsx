@@ -1,237 +1,152 @@
-import { useState, useMemo } from "react";
-import { motion, AnimatePresence } from "motion/react";
-import { ChevronLeft, Minus, Plus } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Minus, Plus } from "lucide-react";
 import { calcPlatesPerSide, warmupLadder } from "../lib/intelligence";
+import { fmtKg, sanitizeDecimal } from "../lib/stats";
+import { FlowHeader } from "./ui";
 
-interface PlateCalculatorProps {
-  onClose: () => void;
-  initialWeight?: number;
-}
-
-const PLATE_COLORS: Record<number, string> = {
-  25:   '#EF4444', // red
-  20:   '#3B82F6', // blue
-  15:   '#F59E0B', // amber
-  10:   '#10B981', // emerald
-  5:    '#8B5CF6', // violet
-  2.5:  '#EC4899', // pink
-  1.25: '#6B7280', // gray
+// IWF calibrated plate colours, with height following plate diameter.
+const PLATES: Record<number, { color: string; h: number; w: number; ink: string }> = {
+  25:   { color: "#d93a35", h: 88, w: 15, ink: "#fff" },
+  20:   { color: "#2f62d8", h: 88, w: 13, ink: "#fff" },
+  15:   { color: "#e8b923", h: 88, w: 11, ink: "#141517" },
+  10:   { color: "#2f9a57", h: 88, w: 10, ink: "#fff" },
+  5:    { color: "#e9e7e2", h: 58, w: 9, ink: "#141517" },
+  2.5:  { color: "#d93a35", h: 44, w: 8, ink: "#fff" },
+  1.25: { color: "#a4a8ae", h: 36, w: 7, ink: "#141517" },
 };
 
 const BAR_WEIGHTS = [20, 15, 10] as const;
+type Bar = typeof BAR_WEIGHTS[number];
 
-export function PlateCalculator({ onClose, initialWeight = 100 }: PlateCalculatorProps) {
+export function PlateCalculator({ onClose, initialWeight = 100, inline }: { onClose: () => void; initialWeight?: number; inline?: boolean }) {
   const [targetWeight, setTargetWeight] = useState(initialWeight);
-  const [barWeight, setBarWeight] = useState<20 | 15 | 10>(20);
+  const [draft, setDraft] = useState(String(initialWeight));
+  const [barWeight, setBarWeight] = useState<Bar>(20);
 
   const plates = useMemo(() => calcPlatesPerSide(targetWeight, barWeight), [targetWeight, barWeight]);
   const ladder = useMemo(() => warmupLadder(targetWeight), [targetWeight]);
+  const loaded = barWeight + plates.reduce((a, p) => a + p.kg * p.count * 2, 0);
+  const remainder = Math.round((targetWeight - loaded) * 100) / 100;
+  const sleeve = plates.flatMap(p => Array.from({ length: p.count }, () => p.kg));
 
-  const canCompute = targetWeight > barWeight;
-
-  const adjustWeight = (delta: number) => {
-    setTargetWeight(w => Math.max(barWeight + 2.5, Math.round((w + delta) / 2.5) * 2.5));
+  const setWeight = (w: number) => {
+    const next = Math.max(0, Math.round(w * 4) / 4);
+    setTargetWeight(next);
+    setDraft(String(next));
   };
 
-  return (
-    <div className="flex flex-col h-screen bg-[var(--color-void-0)] text-[#C0D0F0] overflow-hidden max-w-md mx-auto">
-      {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-white/[0.05] bg-[var(--color-void-0)]/90 backdrop-blur-md sticky top-0 z-10">
-        <button onClick={onClose} className="p-2 -ml-2 text-slate-500 hover:text-slate-300 transition-colors">
-          <ChevronLeft className="w-7 h-7" />
-        </button>
-        <div>
-          <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--color-signal)] opacity-80">Utilitaire</div>
-          <h2 className="font-display font-black uppercase text-[#C0D0F0]" style={{ fontSize: '22px', lineHeight: 1 }}>
-            CALCULATEUR
-          </h2>
-        </div>
-      </div>
-
-      <div className="flex-1 overflow-y-auto view-no-scrollbar px-4 py-5 space-y-5">
-        {/* Target weight */}
-        <div className="rounded-2xl bg-[var(--color-void-1)] border border-white/[0.05] p-5">
-          <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-4">Poids cible</div>
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => adjustWeight(-2.5)}
-              className="w-12 h-12 rounded-xl bg-[var(--color-void-3)] border border-white/[0.06] flex items-center justify-center text-slate-400 active:scale-95 transition"
-            >
-              <Minus className="w-5 h-5" />
-            </button>
-            <div className="flex-1 text-center">
-              <div className="font-display font-black tnum" style={{ fontSize: '64px', lineHeight: 0.9, color: 'var(--color-signal)' }}>
-                {targetWeight}
-              </div>
-              <div className="text-sm text-slate-500 mt-1">kg</div>
-            </div>
-            <button
-              onClick={() => adjustWeight(2.5)}
-              className="w-12 h-12 rounded-xl bg-[var(--color-void-3)] border border-white/[0.06] flex items-center justify-center text-slate-400 active:scale-95 transition"
-            >
-              <Plus className="w-5 h-5" />
-            </button>
+  const body = (
+    <div className="space-y-4">
+      <section className="rounded-2xl bg-surface border border-line p-4">
+        <label htmlFor="plate-target" className="block text-[15px] text-muted mb-2">Charge totale visée</label>
+        <div className="flex items-center gap-3">
+          <button onClick={() => setWeight(targetWeight - 2.5)} aria-label="Retirer 2,5 kg" className="w-14 h-14 rounded-xl bg-raised text-ink flex items-center justify-center active:bg-line">
+            <Minus className="w-6 h-6" />
+          </button>
+          <div className="flex-1 flex items-baseline justify-center gap-1">
+            <input
+              id="plate-target"
+              type="text"
+              inputMode="decimal"
+              autoComplete="off"
+              value={draft.replace(".", ",")}
+              onChange={e => { const v = sanitizeDecimal(e.target.value); setDraft(v); if (v !== "") setTargetWeight(Number(v)); }}
+              onBlur={() => setWeight(targetWeight)}
+              className="type-num w-full min-w-0 text-center bg-transparent text-[64px] text-ink outline-none"
+            />
+            <span className="text-lg text-muted">kg</span>
           </div>
-
-          {/* Bar weight selector */}
-          <div className="mt-5">
-            <div className="text-[10px] font-bold uppercase tracking-widest text-slate-600 mb-2.5">Poids de barre</div>
-            <div className="flex gap-2">
-              {BAR_WEIGHTS.map(bw => (
-                <button
-                  key={bw}
-                  onClick={() => setBarWeight(bw as 20 | 15 | 10)}
-                  className={`flex-1 py-2.5 rounded-xl text-sm font-bold border transition-all ${
-                    barWeight === bw
-                      ? 'border-transparent text-black'
-                      : 'bg-[var(--color-void-3)] border-white/[0.07] text-slate-500'
-                  }`}
-                  style={barWeight === bw ? { background: 'var(--color-signal)' } : {}}
-                >
-                  {bw} kg
-                </button>
-              ))}
-            </div>
-          </div>
+          <button onClick={() => setWeight(targetWeight + 2.5)} aria-label="Ajouter 2,5 kg" className="w-14 h-14 rounded-xl bg-raised text-ink flex items-center justify-center active:bg-line">
+            <Plus className="w-6 h-6" />
+          </button>
         </div>
 
-        {/* Plate visualization */}
-        <AnimatePresence mode="wait">
-          {canCompute && plates.length > 0 && (
-            <motion.div
-              key={`${targetWeight}-${barWeight}`}
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              className="rounded-2xl bg-[var(--color-void-1)] border border-white/[0.05] p-5"
-            >
-              <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-4">
-                Disques par côté
-              </div>
+        <div className="mt-4">
+          <span id="bar-label" className="block text-sm text-muted mb-2">Barre</span>
+          <div className="flex gap-2" role="radiogroup" aria-labelledby="bar-label">
+            {BAR_WEIGHTS.map(bw => (
+              <button
+                key={bw}
+                role="radio"
+                aria-checked={barWeight === bw}
+                onClick={() => setBarWeight(bw)}
+                className={`flex-1 h-11 rounded-xl text-[15px] font-semibold ${barWeight === bw ? "bg-chalk text-on-chalk" : "bg-raised text-muted"}`}
+              >
+                {bw} kg
+              </button>
+            ))}
+          </div>
+        </div>
+      </section>
 
-              {/* Visual bar */}
-              <div className="flex items-center justify-center mb-5 gap-1 overflow-hidden">
-                {/* Plates left (reversed) */}
-                <div className="flex items-center gap-0.5">
-                  {[...plates].reverse().flatMap(p =>
-                    Array.from({ length: p.count }, (_, i) => (
-                      <motion.div
-                        key={`L-${p.kg}-${i}`}
-                        initial={{ scaleX: 0 }}
-                        animate={{ scaleX: 1 }}
-                        transition={{ delay: i * 0.05 }}
-                        className="rounded-sm"
-                        style={{
-                          width: Math.max(10, p.kg * 1.4),
-                          height: 52,
-                          background: PLATE_COLORS[p.kg] ?? '#6B7280',
-                          opacity: 0.85,
-                        }}
-                      />
-                    ))
-                  )}
-                </div>
-                {/* Bar */}
-                <div className="w-10 h-3 rounded-full bg-slate-600 border border-slate-500" />
-                {/* Plates right */}
-                <div className="flex items-center gap-0.5">
-                  {plates.flatMap(p =>
-                    Array.from({ length: p.count }, (_, i) => (
-                      <motion.div
-                        key={`R-${p.kg}-${i}`}
-                        initial={{ scaleX: 0 }}
-                        animate={{ scaleX: 1 }}
-                        transition={{ delay: i * 0.05 }}
-                        className="rounded-sm"
-                        style={{
-                          width: Math.max(10, p.kg * 1.4),
-                          height: 52,
-                          background: PLATE_COLORS[p.kg] ?? '#6B7280',
-                          opacity: 0.85,
-                        }}
-                      />
-                    ))
-                  )}
-                </div>
-              </div>
-
-              {/* Plate list */}
-              <div className="space-y-2">
-                {plates.map(p => (
-                  <div key={p.kg} className="flex items-center gap-3">
-                    <div
-                      className="w-3 h-3 rounded-sm shrink-0"
-                      style={{ background: PLATE_COLORS[p.kg] ?? '#6B7280' }}
-                    />
-                    <span className="flex-1 text-sm text-slate-300">
-                      <span className="font-bold">{p.kg} kg</span>
-                    </span>
-                    <span className="font-mono text-sm font-bold text-[#C0D0F0]">
-                      × {p.count} <span className="text-slate-600 text-xs">par côté</span>
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-          )}
-
-          {canCompute && plates.length === 0 && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="rounded-2xl bg-[var(--color-void-1)] border border-white/[0.05] p-5 text-center text-slate-600 text-sm"
-            >
-              Barre seule ({barWeight} kg)
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Warmup ladder */}
-        {canCompute && (
-          <motion.div
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15 }}
-            className="rounded-2xl bg-[var(--color-void-1)] border border-white/[0.05] p-5"
-          >
-            <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-4">
-              Ladder d'échauffement
-            </div>
-            <div className="space-y-2.5">
-              {ladder.map((step, i) => (
-                <div key={i} className="flex items-center gap-3">
+      <section className="rounded-2xl bg-surface border border-line p-4">
+        <h2 className="text-[17px] font-semibold text-ink mb-4">Sur chaque côté</h2>
+        {targetWeight <= barWeight ? (
+          <p className="text-muted">Barre seule ({barWeight} kg). Rien à charger.</p>
+        ) : (
+          <>
+            {/* Sleeve: plates drawn from the collar outwards, sized like the real thing. */}
+            <div className="flex items-center h-24 mb-4" aria-hidden>
+              <div className="w-10 h-3 rounded-l bg-faint" />
+              <div className="w-2 h-8 rounded-sm bg-muted" />
+              {sleeve.map((kg, i) => {
+                const p = PLATES[kg];
+                return (
                   <div
-                    className="w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-bold text-black shrink-0"
-                    style={{ background: `rgba(13,223,184,${0.4 + i * 0.2})` }}
-                  >
-                    {step.pct}%
-                  </div>
-                  <div className="flex-1">
-                    <span className="font-mono font-bold text-[#C0D0F0]">{step.weight} kg</span>
-                    <span className="text-slate-600 text-xs ml-2">× {step.reps} reps</span>
-                  </div>
-                  <div className="text-[11px] text-slate-700 font-mono">
-                    {calcPlatesPerSide(step.weight, barWeight).map(p => `${p.count}×${p.kg}`).join(' + ') || 'barre'}
-                  </div>
-                </div>
-              ))}
-              {/* Work set */}
-              <div className="flex items-center gap-3 pt-2 border-t border-white/[0.05] mt-2">
-                <div
-                  className="w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-bold text-black shrink-0"
-                  style={{ background: 'var(--color-signal)' }}
-                >
-                  WK
-                </div>
-                <div className="flex-1">
-                  <span className="font-mono font-bold text-[var(--color-signal)]">{targetWeight} kg</span>
-                  <span className="text-slate-600 text-xs ml-2">série de travail</span>
-                </div>
-              </div>
+                    key={i}
+                    className="rounded-[3px] ml-[2px] flex items-center justify-center"
+                    style={{ width: p.w * 1.6, height: p.h, background: p.color }}
+                  />
+                );
+              })}
+              <div className="flex-1 h-3 rounded-r bg-faint ml-[2px]" />
             </div>
-          </motion.div>
+            <ul className="space-y-2">
+              {plates.map(p => (
+                <li key={p.kg} className="flex items-center gap-3 text-[16px]">
+                  <span className="w-4 h-4 rounded-sm shrink-0" style={{ background: PLATES[p.kg]?.color }} aria-hidden />
+                  <span className="flex-1 text-ink">Disque de {fmtKg(p.kg)} kg</span>
+                  <span className="type-num text-xl text-ink">× {p.count}</span>
+                </li>
+              ))}
+            </ul>
+            {remainder > 0 && (
+              <p className="text-sm text-warn mt-3">Impossible au gramme près : {fmtKg(loaded)} kg chargés, il manque {fmtKg(remainder)} kg.</p>
+            )}
+          </>
         )}
-      </div>
+      </section>
+
+      {targetWeight > barWeight + 10 && (
+        <section className="rounded-2xl bg-surface border border-line p-4">
+          <h2 className="text-[17px] font-semibold text-ink mb-1">Montée en charge</h2>
+          <p className="text-sm text-faint mb-3">Séries d'échauffement avant ta première série de travail.</p>
+          <ol className="divide-y divide-line">
+            {ladder.map((step, i) => (
+              <li key={i} className="flex items-center gap-3 py-2.5">
+                <span className="w-12 text-sm text-muted tnum">{step.pct} %</span>
+                <span className="flex-1 type-num text-xl text-ink">{fmtKg(step.weight)} kg × {step.reps}</span>
+                <span className="text-sm text-faint tnum text-right">
+                  {calcPlatesPerSide(step.weight, barWeight).map(p => `${p.count}×${fmtKg(p.kg)}`).join(" + ") || "barre"}
+                </span>
+              </li>
+            ))}
+            <li className="flex items-center gap-3 py-2.5">
+              <span className="w-12 text-sm text-ink font-semibold">Travail</span>
+              <span className="flex-1 type-num text-xl text-ink">{fmtKg(targetWeight)} kg</span>
+            </li>
+          </ol>
+        </section>
+      )}
+    </div>
+  );
+
+  if (inline) return body;
+
+  return (
+    <div className="min-h-screen max-w-md mx-auto">
+      <FlowHeader title="Charger la barre" onBack={onClose} closeIcon backLabel="Fermer" />
+      <div className="px-4 py-5 safe-scroll">{body}</div>
     </div>
   );
 }

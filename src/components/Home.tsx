@@ -1,327 +1,292 @@
-import { allExercises, getTodayFromSchedule } from "../data";
-import { Dumbbell, ChevronRight, CheckCircle2, ClipboardCheck, BarChart3, Settings as SettingsIcon, Flame, Play, Activity, Calculator } from "lucide-react";
-import { motion } from "motion/react";
-import { storage, ActiveSession, ProgramData } from "../lib/storage";
-import { useState, useEffect, useMemo, type ReactNode } from "react";
-import { computeStreak, fmtVol, sessionVolume, sessionsThisWeek } from "../lib/stats";
-import { weeklyMuscleGroupSets, getVolumeStatus, VOLUME_LANDMARKS } from "../lib/intelligence";
+import { useMemo, useState, type ReactNode } from "react";
+import { Check, ChevronRight, Calculator, ClipboardCheck, Play, AlertTriangle } from "lucide-react";
+import { allExercises, getTodayFromSchedule, type Workout } from "../data";
+import { storage, type ProgramData } from "../lib/storage";
+import {
+  computeStreak, estimateRemainingSec, fmtKg, fmtRelativeShort, fmtTonnage,
+  sessionVolume, sessionsSince, weekOverview, workoutTitle,
+} from "../lib/stats";
+import { weeklyMuscleGroupSets, getVolumeStatus, VOLUME_LANDMARKS, getSessionTarget } from "../lib/intelligence";
+import { btn, ConfirmSheet, SectionLabel } from "./ui";
+import type { ProgressTab } from "./Progress";
 
 interface HomeProps {
+  program: ProgramData;
   onStartWorkout: (workoutId: string, opts?: { resume?: boolean }) => void;
   onStartCheckin: () => void;
-  onOpenHistory: () => void;
-  onOpenSettings: () => void;
-  onOpenVolumeDashboard: () => void;
-  onOpenPlateCalculator: () => void;
-  program: ProgramData;
+  onOpenPlates: () => void;
+  onOpenProgress: (tab: ProgressTab) => void;
 }
 
-const workoutSubtitle = (name: string) => name.split("—").pop()?.trim() || name;
+const DAY_LETTERS = ["L", "M", "M", "J", "V", "S", "D"];
+const repsLabel = (reps: string) => reps.replace("-", "–");
 
-export function Home({ program, onStartWorkout, onStartCheckin, onOpenHistory, onOpenSettings, onOpenVolumeDashboard, onOpenPlateCalculator }: HomeProps) {
+const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+export function Home({ program, onStartWorkout, onStartCheckin, onOpenPlates, onOpenProgress }: HomeProps) {
   const today = getTodayFromSchedule(program.weeklySchedule);
   const todayWorkout = today.workoutId ? program.workouts[today.workoutId] : null;
-  const isSundayCheckin = today.day === "Dimanche";
+  const isCheckinDay = today.day === "Dimanche";
 
-  const [active, setActive] = useState<ActiveSession | null>(null);
-  const [tick, setTick] = useState(0);
-
-  useEffect(() => { setActive(storage.getActiveSession()); }, [tick]);
-
-  const sessions = useMemo(() => storage.getSessions(), [tick]);
+  const [active, setActive] = useState(() => storage.getActiveSession());
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
+  const sessions = useMemo(() => storage.getSessions(), []);
+  const settings = useMemo(() => storage.getSettings(), []);
   const exercises = useMemo(() => allExercises(program.workouts), [program.workouts]);
 
-  const stats = useMemo(() => {
-    const week = sessionsThisWeek(sessions);
-    const totalVolWeek = week.reduce((a, s) => a + (s.totalVolume ?? sessionVolume(s)), 0);
-    return {
-      total: sessions.length,
-      week: week.length,
-      weekVolume: totalVolWeek,
-      streak: computeStreak(sessions),
-    };
-  }, [sessions]);
+  const week = useMemo(() => weekOverview(sessions, program.weeklySchedule), [sessions, program.weeklySchedule]);
+  const plannedCount = week.filter(d => d.type === "workout").length;
+  const doneCount = week.filter(d => d.status === "done").length;
+  const missedCount = week.filter(d => d.status === "missed").length;
+  const nextPlanned = week.find(d => d.status === "planned");
+  const trainedToday = week.find(d => d.isToday)?.status === "done";
+
+  const volume7d = useMemo(
+    () => sessionsSince(sessions, 7).reduce((a, s) => a + (s.totalVolume ?? sessionVolume(s)), 0),
+    [sessions],
+  );
+  const streak = useMemo(() => computeStreak(sessions), [sessions]);
 
   const volumeAlerts = useMemo(() => {
     const mgSets = weeklyMuscleGroupSets(sessions, exercises);
     return Object.entries(VOLUME_LANDMARKS)
       .map(([key, lm]) => ({ key, label: lm.label, sets: mgSets[key] ?? 0, status: getVolumeStatus(mgSets[key] ?? 0, key) }))
-      .filter(r => r.status === 'below-mev' && r.sets > 0 || r.status === 'above-mrv')
-      .slice(0, 2);
+      .filter(r => r.status === "above-mrv");
   }, [sessions, exercises]);
-
-  const discardActive = () => {
-    if (!confirm("Abandonner la séance en cours ?")) return;
-    storage.clearActiveSession();
-    setTick(t => t + 1);
-  };
 
   const activeWorkout = active ? program.workouts[active.workoutId] : null;
   const activeMinutes = active ? Math.max(1, Math.floor((Date.now() - new Date(active.startedAt).getTime()) / 60000)) : 0;
+  const activeSetsDone = active ? Object.values(active.logs).flatMap(l => l.sets).filter(s => s.isComplete).length : 0;
+
+  const otherWorkouts = (Object.values(program.workouts) as Workout[]).filter(w => w.id !== todayWorkout?.id);
+  const dateLabel = capitalize(new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" }));
 
   return (
-    <div className="flex flex-col min-h-screen bg-[var(--color-void-0)] px-4 py-6 max-w-md mx-auto pb-14">
-      {/* Header */}
-      <header className="mb-6 mt-1 flex items-end justify-between">
-        <div>
-          <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--color-signal)] mb-2" style={{ opacity: 0.75 }}>
-            {new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: '2-digit', month: 'long' })}
-          </div>
-          <h1 className="font-display font-black leading-[0.82] text-[#C0D0F0]" style={{ fontSize: '72px', letterSpacing: '-0.01em' }}>
-            ROUTINE
-          </h1>
-        </div>
-        <div className="flex items-center gap-2 mb-1.5">
-          <button
-            onClick={onOpenVolumeDashboard}
-            className="w-10 h-10 rounded-xl bg-[var(--color-void-2)] border border-white/[0.06] flex items-center justify-center text-slate-400 active:bg-[var(--color-void-3)] transition"
-            title="Volume MEV/MAV/MRV"
-          >
-            <Activity className="w-4 h-4" />
-          </button>
-          <button
-            onClick={onOpenPlateCalculator}
-            className="w-10 h-10 rounded-xl bg-[var(--color-void-2)] border border-white/[0.06] flex items-center justify-center text-slate-400 active:bg-[var(--color-void-3)] transition"
-            title="Calculateur disques"
-          >
-            <Calculator className="w-4 h-4" />
-          </button>
-          <button
-            onClick={onOpenHistory}
-            className="w-10 h-10 rounded-xl bg-[var(--color-void-2)] border border-white/[0.06] flex items-center justify-center text-slate-400 active:bg-[var(--color-void-3)] transition"
-          >
-            <BarChart3 className="w-4 h-4" />
-          </button>
-          <button
-            onClick={onOpenSettings}
-            className="w-10 h-10 rounded-xl bg-[var(--color-void-2)] border border-white/[0.06] flex items-center justify-center text-slate-400 active:bg-[var(--color-void-3)] transition"
-          >
-            <SettingsIcon className="w-4 h-4" />
-          </button>
-        </div>
-      </header>
+    <div className="tab-page">
+      <p className="text-[15px] text-muted mb-1">{dateLabel}</p>
 
-      {/* Stats strip */}
-      <div className="grid grid-cols-3 gap-2 mb-3">
-        <StatPill label="Séances/sem" value={`${stats.week}`} />
-        <StatPill label="Volume 7j" value={fmtVol(stats.weekVolume)} unit="kg" />
-        <StatPill label="Streak" value={`${stats.streak}`} unit={stats.streak === 1 ? "j" : "j"} tone={stats.streak >= 3 ? "flame" : undefined} />
-      </div>
-
-      {/* Volume alerts (A1) */}
-      {volumeAlerts.length > 0 && (
-        <motion.button
-          initial={{ opacity: 0, y: -4 }}
-          animate={{ opacity: 1, y: 0 }}
-          onClick={onOpenVolumeDashboard}
-          className="w-full mb-4 flex items-center gap-3 px-3 py-2.5 rounded-xl bg-[var(--color-void-1)] border border-white/[0.05] text-left active:scale-[0.99] transition"
-        >
-          <Activity className="w-4 h-4 text-[var(--color-acid)] shrink-0" />
-          <div className="flex-1 min-w-0">
-            <span className="text-[11px] text-slate-400">
-              {volumeAlerts.map(a =>
-                a.status === 'above-mrv'
-                  ? `${a.label} sur-MRV`
-                  : `${a.label} sous-MEV`
-              ).join(' · ')}
-            </span>
-          </div>
-          <span className="text-[10px] text-slate-600 shrink-0">Voir →</span>
-        </motion.button>
-      )}
-
-      {/* Resume banner */}
+      {/* Resume an interrupted session — always the first thing to see. */}
       {active && activeWorkout && (
-        <motion.div
-          initial={{ opacity: 0, y: -8 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-5 rounded-xl border border-[var(--color-signal)]/20 bg-signal-soft p-[3px]"
-        >
-          <div className="rounded-[10px] bg-[var(--color-void-1)] p-4 flex items-center gap-3">
-            <div className="w-11 h-11 rounded-xl bg-[var(--color-signal)] text-black flex items-center justify-center shrink-0">
-              <Play className="w-5 h-5" strokeWidth={2.5} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-signal)] mb-0.5">En cours</div>
-              <div className="font-bold text-sm truncate text-[#C0D0F0]">{workoutSubtitle(activeWorkout.name)}</div>
-              <div className="text-[11px] font-mono tnum text-slate-500">Il y a {activeMinutes} min</div>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <button
-                onClick={() => onStartWorkout(active.workoutId, { resume: true })}
-                className="px-3 h-8 rounded-lg bg-[var(--color-signal)] text-black text-xs font-bold active:scale-95 transition"
-              >
-                Reprendre
-              </button>
-              <button
-                onClick={discardActive}
-                className="px-3 h-6 rounded-lg text-[10px] font-medium text-slate-500 active:text-red-400 transition"
-              >
-                Abandonner
-              </button>
-            </div>
+        <section aria-label="Séance en cours" className="mt-3 mb-6 rounded-2xl bg-surface border border-line p-4">
+          <div className="flex items-center gap-2 text-sm text-go font-semibold mb-1">
+            <span className="w-2 h-2 rounded-full bg-go" aria-hidden /> Séance en cours
           </div>
-        </motion.div>
+          <div className="type-display text-[32px] text-ink mb-1">{workoutTitle(activeWorkout.name)}</div>
+          <p className="text-sm text-muted mb-4">
+            Commencée il y a {activeMinutes} min · {activeSetsDone} série{activeSetsDone > 1 ? "s" : ""} validée{activeSetsDone > 1 ? "s" : ""}
+          </p>
+          <div className="flex gap-2">
+            <button onClick={() => onStartWorkout(active.workoutId, { resume: true })} className={`${btn.primary} flex-1`}>
+              <Play className="w-5 h-5" fill="currentColor" /> Reprendre
+            </button>
+            <button onClick={() => setConfirmDiscard(true)} className={`${btn.quiet} h-14`}>Abandonner</button>
+          </div>
+        </section>
       )}
 
-      {/* Today's Card */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="relative rounded-2xl overflow-hidden border border-white/[0.06] bg-[var(--color-void-1)] mb-7"
-      >
-        {/* Left signal strip */}
-        {(today.type === 'workout' || isSundayCheckin) && (
-          <div
-            className="absolute left-0 top-0 bottom-0 w-[3px]"
-            style={{ background: 'var(--color-signal)', boxShadow: '4px 0 16px rgba(13,223,184,0.25)' }}
-          />
-        )}
-        {/* Ambient glow */}
-        <div className="absolute -top-16 -right-16 w-48 h-48 rounded-full pointer-events-none"
-          style={{ background: 'radial-gradient(circle, rgba(13,223,184,0.06) 0%, transparent 70%)' }}
+      {/* Today */}
+      {!active && todayWorkout ? (
+        <TodayWorkout
+          workout={todayWorkout}
+          trainedToday={trainedToday}
+          lastDone={storage.getSessionsForWorkout(todayWorkout.id).at(-1)?.date}
+          estimateMin={Math.max(10, Math.round(estimateRemainingSec(todayWorkout, {}, 0, settings.defaultRest) / 300) * 5)}
+          targets={todayWorkout.exercises.map(ex => getSessionTarget(sessions, ex.id, ex.reps, ex.isCompound ?? false))}
+          onStart={() => onStartWorkout(todayWorkout.id)}
         />
-        <div className="relative pl-6 pr-5 py-5">
-          {isSundayCheckin ? (
-            <>
-              <Pretitle icon={<ClipboardCheck className="w-3.5 h-3.5" />} text="Check-in du dimanche" tone="blue" />
-              <h2 className="font-display font-black text-[#C0D0F0] mt-3 mb-2" style={{ fontSize: '38px', lineHeight: 0.9, letterSpacing: '-0.01em' }}>
-                BILAN<br />SEMAINE
-              </h2>
-              <p className="text-slate-400 text-sm mb-5 leading-relaxed">Pesée, tour de taille et photos.</p>
-              <button
-                onClick={onStartCheckin}
-                className="w-full text-black font-bold py-4 rounded-xl active:scale-[0.97] transition flex items-center justify-center gap-2"
-                style={{ background: 'var(--color-signal)', boxShadow: '0 6px 20px rgba(13,223,184,0.25)' }}
-              >
-                Faire le check-in <ChevronRight className="w-5 h-5" />
-              </button>
-            </>
-          ) : today.type === "workout" && todayWorkout ? (
-            <>
-              <Pretitle icon={<Dumbbell className="w-3.5 h-3.5" />} text={`${todayWorkout.exercises.length} exercices`} tone="success" />
-              <h2 className="font-display font-black uppercase text-[#C0D0F0] mt-3 mb-2" style={{ fontSize: '42px', lineHeight: 0.88, letterSpacing: '-0.01em' }}>
-                {workoutSubtitle(todayWorkout.name)}
-              </h2>
-              <div className="flex flex-wrap gap-1.5 mb-5">
-                {todayWorkout.exercises.slice(0, 4).map(e => (
-                  <span key={e.id} className="text-[11px] text-slate-500 bg-white/[0.04] border border-white/[0.05] px-2.5 py-1 rounded-lg">
-                    {e.name.split(/\s+/).slice(0, 2).join(' ')}
-                  </span>
-                ))}
-                {todayWorkout.exercises.length > 4 && (
-                  <span className="text-[11px] text-slate-600 px-2 py-1">+{todayWorkout.exercises.length - 4}</span>
-                )}
-              </div>
-              <button
-                onClick={() => onStartWorkout(todayWorkout.id)}
-                className="w-full text-black font-bold py-4 rounded-xl active:scale-[0.97] transition flex items-center justify-center gap-2 font-display text-lg"
-                style={{ background: 'var(--color-signal)', boxShadow: '0 6px 20px rgba(13,223,184,0.25)' }}
-              >
-                Commencer <ChevronRight className="w-5 h-5" />
-              </button>
-            </>
-          ) : (
-            <>
-              <Pretitle icon={<CheckCircle2 className="w-3.5 h-3.5" />} text="Repos" tone="zinc" />
-              <h2 className="font-display font-black uppercase text-[#C0D0F0] mt-3 mb-2" style={{ fontSize: '38px', lineHeight: 0.9, letterSpacing: '-0.01em' }}>
-                RÉCUPÉRATION
-              </h2>
-              <p className="text-slate-400 text-sm leading-relaxed">{today.description}</p>
-            </>
+      ) : !active && (
+        <section className="mb-8">
+          <h1 className="type-display text-[64px] text-ink mt-1 mb-2">{isCheckinDay ? "Bilan" : "Repos"}</h1>
+          <p className="text-[17px] text-muted leading-snug mb-5 max-w-[34ch]">
+            {isCheckinDay
+              ? "Pesée à jeun, tour de taille et photos. Trois minutes pour suivre la semaine."
+              : today.description || "Récupération : marche, mobilité, sommeil."}
+          </p>
+          {isCheckinDay && (
+            <button onClick={onStartCheckin} className={`${btn.primary} w-full`}>
+              <ClipboardCheck className="w-5 h-5" /> Faire le check-in
+            </button>
           )}
-        </div>
-      </motion.div>
+          {nextPlanned?.workoutId && (
+            <p className="text-[15px] text-faint mt-4">
+              Prochaine séance : <span className="text-ink font-medium">{workoutTitle(program.workouts[nextPlanned.workoutId]?.name ?? "")}</span>, {nextPlanned.day.toLowerCase()}
+            </p>
+          )}
+        </section>
+      )}
 
-      {/* Week schedule */}
-      <div className="flex-1">
-        <div className="flex items-center justify-between mb-3 px-1">
-          <h3 className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Programme</h3>
-          <span className="text-[10px] font-mono tnum text-slate-600">7 jours</span>
-        </div>
+      {/* This week */}
+      <section className="mb-8">
+        <SectionLabel aside={`${doneCount} sur ${plannedCount} séances`}>Cette semaine</SectionLabel>
+        <ol className="grid grid-cols-7 gap-1.5" aria-label="Semaine en cours">
+          {week.map((d, i) => (
+            <li key={d.day} className="flex flex-col items-center gap-1.5">
+              <span className={`text-xs font-semibold ${d.isToday ? "text-ink" : "text-faint"}`}>{DAY_LETTERS[i]}</span>
+              <DayCell status={d.status} isToday={d.isToday} label={`${d.day} : ${statusText(d.status, d.workoutId ? workoutTitle(program.workouts[d.workoutId]?.name ?? "") : undefined)}`} />
+            </li>
+          ))}
+        </ol>
+        {missedCount > 0 && (
+          <p className="text-sm text-faint mt-3">
+            {missedCount} séance{missedCount > 1 ? "s" : ""} manquée{missedCount > 1 ? "s" : ""} cette semaine. Reprends simplement là où tu en es.
+          </p>
+        )}
 
-        <div className="rounded-2xl bg-[var(--color-void-1)] border border-white/[0.05] overflow-hidden">
-          {program.weeklySchedule.map((day, idx) => {
-            const isToday = day.day === today.day;
-            const isWorkout = day.type === "workout";
-            const isSunday = day.day === "Dimanche";
-            const w = day.workoutId ? program.workouts[day.workoutId] : null;
-            const isLast = idx === program.weeklySchedule.length - 1;
+        <dl className="grid grid-cols-2 mt-5 rounded-2xl bg-surface border border-line divide-x divide-line">
+          <div className="p-4">
+            <dt className="text-sm text-muted mb-1">Volume sur 7 jours</dt>
+            <dd className="type-num text-[30px] text-ink">{fmtTonnage(volume7d)}</dd>
+          </div>
+          <div className="p-4">
+            <dt className="text-sm text-muted mb-1">Séances d'affilée</dt>
+            <dd className="type-num text-[30px] text-ink">{streak}</dd>
+          </div>
+        </dl>
 
+        {volumeAlerts.length > 0 && (
+          <button
+            onClick={() => onOpenProgress("volume")}
+            className="w-full mt-2 flex items-center gap-3 p-4 rounded-2xl bg-warn/10 border border-warn/25 text-left"
+          >
+            <AlertTriangle className="w-5 h-5 text-warn shrink-0" />
+            <span className="flex-1 text-[15px] text-ink">
+              Trop de volume cette semaine : {volumeAlerts.map(a => a.label.toLowerCase()).join(", ")}
+            </span>
+            <ChevronRight className="w-5 h-5 text-faint" />
+          </button>
+        )}
+      </section>
+
+      {/* Any other session, any day */}
+      <section className="mb-8">
+        <SectionLabel>{todayWorkout ? "Autres séances" : "Lancer une séance"}</SectionLabel>
+        <ul className="rounded-2xl bg-surface border border-line divide-y divide-line overflow-hidden">
+          {otherWorkouts.map(w => {
+            const last = storage.getSessionsForWorkout(w.id).at(-1);
             return (
-              <motion.div
-                initial={{ opacity: 0, x: -4 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.04 + idx * 0.025 }}
-                key={day.day}
-                className={`flex items-center px-4 py-3.5 transition ${
-                  !isLast ? 'border-b border-[rgba(100,150,255,0.05)]' : ''
-                } ${isToday ? 'bg-[var(--color-void-2)]' : ''}`}
-              >
-                <div className={`w-8 text-center mr-4 ${isToday ? 'text-[var(--color-signal)]' : 'text-slate-600'}`}>
-                  <div className="text-[10px] font-bold tracking-wide uppercase">{day.day.slice(0, 3)}</div>
-                  {isToday && <div className="w-1.5 h-1.5 rounded-full bg-[var(--color-signal)] mx-auto mt-1" />}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className={`font-semibold text-sm leading-tight ${isToday ? 'text-[#C0D0F0]' : 'text-slate-400'}`}>
-                    {isWorkout ? workoutSubtitle(w?.name || "Séance") : isSunday ? "Check-in" : "Repos"}
-                  </p>
-                  {isWorkout && w && (
-                    <p className={`text-[11px] mt-0.5 ${isToday ? 'text-slate-500' : 'text-slate-700'}`}>
-                      {w.exercises.length} exercices
-                    </p>
-                  )}
-                </div>
-                {isWorkout && w && (
-                  <button
-                    onClick={() => onStartWorkout(w.id)}
-                    className="p-2 bg-white/[0.04] hover:bg-white/[0.07] rounded-lg transition active:bg-white/[0.1]"
-                  >
-                    <ChevronRight className="w-4 h-4 text-slate-500" />
-                  </button>
-                )}
-                {isSunday && (
-                  <button onClick={onStartCheckin} className="p-2 bg-blue-500/10 hover:bg-blue-500/15 rounded-lg transition">
-                    <ClipboardCheck className="w-4 h-4 text-blue-400" />
-                  </button>
-                )}
-              </motion.div>
+              <li key={w.id}>
+                <button onClick={() => onStartWorkout(w.id)} className="w-full flex items-center gap-3 px-4 py-3.5 text-left active:bg-raised transition">
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[17px] font-semibold text-ink truncate">{workoutTitle(w.name)}</div>
+                    <div className="text-sm text-faint">
+                      {w.exercises.length} exercices{last ? ` · ${fmtRelativeShort(last.date).toLowerCase()}` : ""}
+                    </div>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-faint shrink-0" />
+                </button>
+              </li>
             );
           })}
+        </ul>
+      </section>
+
+      <section>
+        <SectionLabel>Outils</SectionLabel>
+        <div className="grid grid-cols-2 gap-2">
+          <ToolButton icon={<Calculator className="w-5 h-5" />} title="Disques" sub="Charger la barre" onClick={onOpenPlates} />
+          <ToolButton icon={<ClipboardCheck className="w-5 h-5" />} title="Check-in" sub="Poids et taille" onClick={onStartCheckin} />
         </div>
-      </div>
+      </section>
+
+      <ConfirmSheet
+        open={confirmDiscard}
+        title="Abandonner la séance en cours ?"
+        body="Les séries déjà validées ne seront pas enregistrées."
+        confirmLabel="Abandonner"
+        onConfirm={() => { storage.clearActiveSession(); setActive(null); }}
+        onClose={() => setConfirmDiscard(false)}
+      />
     </div>
   );
 }
 
-function StatPill({ label, value, unit, tone }: { label: string; value: string; unit?: string; tone?: "flame" }) {
+function TodayWorkout({
+  workout, trainedToday, lastDone, estimateMin, targets, onStart,
+}: {
+  workout: Workout;
+  trainedToday: boolean;
+  lastDone?: string;
+  estimateMin: number;
+  targets: ReturnType<typeof getSessionTarget>[];
+  onStart: () => void;
+}) {
   return (
-    <div className="rounded-xl bg-[var(--color-void-1)] border border-white/[0.05] p-3 flex flex-col">
-      <div className={`font-display font-black tnum leading-none ${
-        tone === 'flame' ? 'text-[var(--color-flame)]' : 'text-[#C0D0F0]'
-      }`} style={{ fontSize: '38px' }}>
-        {value}
-      </div>
-      <div className="flex items-center gap-1 mt-1">
-        {unit && <span className="font-mono text-[10px] text-slate-500 tnum">{unit}</span>}
-        {tone === 'flame' && <Flame className="w-3 h-3 text-[var(--color-flame)]" />}
-      </div>
-      <div className="text-[9px] font-bold uppercase tracking-[0.12em] text-slate-600 mt-0.5">{label}</div>
-    </div>
+    <section className="mb-8" aria-label="Séance du jour">
+      <h1 className="type-display text-[64px] text-ink mt-1 mb-3">{workoutTitle(workout.name)}</h1>
+      <p className="text-[15px] text-muted mb-5">
+        {workout.exercises.length} exercices · environ {estimateMin} min
+        {lastDone && <> · dernière fois {fmtRelativeShort(lastDone).toLowerCase()}</>}
+      </p>
+
+      <button onClick={onStart} className={`${btn.primary} w-full mb-5`}>
+        {trainedToday ? "Refaire la séance" : "Commencer la séance"}
+      </button>
+
+      <ol className="rounded-2xl bg-surface border border-line divide-y divide-line">
+        {workout.exercises.map((ex, i) => {
+          const t = targets[i];
+          const up = t?.deltaKg !== null && (t?.deltaKg ?? 0) > 0;
+          return (
+            <li key={ex.id} className="flex items-center gap-3 px-4 py-3">
+              <div className="flex-1 min-w-0">
+                <div className="text-[15px] font-medium text-ink truncate">{ex.name}</div>
+                <div className="text-sm text-faint tnum">{ex.sets} × {repsLabel(ex.reps)}</div>
+              </div>
+              <div className="text-right shrink-0">
+                {t?.targetWeight ? (
+                  <>
+                    <div className="type-num text-[22px] text-ink">{fmtKg(t.targetWeight)}<span className="text-sm text-muted ml-0.5">kg</span></div>
+                    {up && <div className="text-xs font-semibold text-go tnum">+{fmtKg(t.deltaKg!)} kg</div>}
+                  </>
+                ) : (
+                  <span className="text-sm text-faint">À calibrer</span>
+                )}
+              </div>
+            </li>
+          );
+        })}
+      </ol>
+    </section>
   );
 }
 
-function Pretitle({ icon, text, tone }: { icon: ReactNode; text: string; tone: "success" | "blue" | "zinc" }) {
-  const cls =
-    tone === "success"
-      ? "text-[var(--color-signal)] bg-signal-soft border-signal-soft"
-      : tone === "blue"
-      ? "text-blue-300 bg-blue-500/10 border-blue-500/15"
-      : "text-slate-500 bg-white/[0.04] border-white/[0.07]";
+function statusText(status: string, name?: string) {
+  switch (status) {
+    case "done": return `fait${name ? ` (${name})` : ""}`;
+    case "missed": return `manqué${name ? ` (${name})` : ""}`;
+    case "today": return `aujourd'hui${name ? ` (${name})` : ""}`;
+    case "planned": return `prévu${name ? ` (${name})` : ""}`;
+    default: return "repos";
+  }
+}
+
+function DayCell({ status, isToday, label }: { status: string; isToday: boolean; label: string }) {
+  const base = "w-full aspect-square max-w-11 rounded-xl flex items-center justify-center";
+  if (status === "done") {
+    const ring = isToday ? " ring-2 ring-chalk ring-offset-2 ring-offset-bg" : "";
+    return <span className={`${base} bg-go text-on-chalk${ring}`} aria-label={label}><Check className="w-5 h-5" strokeWidth={3} /></span>;
+  }
+  if (status === "missed") {
+    return <span className={`${base} border-2 border-dashed border-warn/60`} aria-label={label} />;
+  }
+  if (status === "today" || status === "planned") {
+    return <span className={`${base} border-2 ${isToday ? "border-chalk" : "border-muted/40"}`} aria-label={label} />;
+  }
   return (
-    <div className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border ${cls} text-[11px] font-medium`}>
-      {icon}
-      <span>{text}</span>
-    </div>
+    <span className={`${base} ${isToday ? "border-2 border-chalk" : ""}`} aria-label={label}>
+      <span className="w-1.5 h-1.5 rounded-full bg-faint/60" />
+    </span>
+  );
+}
+
+function ToolButton({ icon, title, sub, onClick }: { icon: ReactNode; title: string; sub: string; onClick: () => void }) {
+  return (
+    <button onClick={onClick} className="flex items-center gap-3 p-4 rounded-2xl bg-surface border border-line text-left active:bg-raised transition">
+      <span className="text-muted">{icon}</span>
+      <span className="min-w-0">
+        <span className="block text-[15px] font-semibold text-ink">{title}</span>
+        <span className="block text-sm text-faint truncate">{sub}</span>
+      </span>
+    </button>
   );
 }
