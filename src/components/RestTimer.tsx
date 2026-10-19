@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Plus, Minus, X, Play, Pause } from "lucide-react";
+import { Maximize2, Pause, Play } from "lucide-react";
 import { cancelRestNotification, scheduleRestNotification, signalRestFinished } from "../lib/native";
 
 interface RestTimerProps {
@@ -10,6 +10,8 @@ interface RestTimerProps {
   onClose: () => void;
   soundOn?: boolean;
   vibrate?: boolean;
+  /** What comes after the rest, e.g. "Série 2 : 67,5 kg × 8–12". */
+  nextLabel?: string;
 }
 
 function beep() {
@@ -30,160 +32,166 @@ function beep() {
   } catch {}
 }
 
-export function RestTimer({ time, isActive, restartKey, onClose, soundOn = true, vibrate = true }: RestTimerProps) {
-  const [timeLeft, setTimeLeft] = useState(time);
-  const [paused, setPaused] = useState(false);
+const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+
+/**
+ * Rest countdown driven by an absolute end time, so it stays correct when the
+ * phone is locked and timers are throttled. Offers a full-screen glance mode
+ * readable from the bench.
+ */
+export function RestTimer({ time, isActive, restartKey, onClose, soundOn = true, vibrate = true, nextLabel }: RestTimerProps) {
+  const [endAt, setEndAt] = useState(() => Date.now() + time * 1000);
+  const [pausedLeft, setPausedLeft] = useState<number | null>(null);
+  const [now, setNow] = useState(Date.now());
+  const [glance, setGlance] = useState(false);
+  const [total, setTotal] = useState(time);
   const buzzedRef = useRef(false);
+  // Once the glance view is dismissed by hand, don't reopen it for this rest.
+  const autoGlanceRef = useRef(true);
+
+  const timeLeft = pausedLeft ?? Math.max(0, Math.ceil((endAt - now) / 1000));
+  const isDone = timeLeft <= 0;
 
   useEffect(() => {
     if (isActive) {
-      setTimeLeft(time);
-      setPaused(false);
+      setEndAt(Date.now() + time * 1000);
+      setNow(Date.now());
+      setPausedLeft(null);
+      setTotal(time);
       buzzedRef.current = false;
+      autoGlanceRef.current = true;
       void scheduleRestNotification(time);
     } else {
+      setGlance(false);
       void cancelRestNotification();
     }
-
-    return () => {
-      void cancelRestNotification();
-    };
+    return () => { void cancelRestNotification(); };
   }, [isActive, time, restartKey]);
 
   useEffect(() => {
-    if (!isActive) return;
-    if (paused) {
-      void cancelRestNotification();
-    } else if (timeLeft > 0) {
-      void scheduleRestNotification(timeLeft);
-    }
-  }, [paused]);
+    if (!isActive || pausedLeft !== null) return;
+    const id = window.setInterval(() => setNow(Date.now()), 250);
+    const onVisible = () => setNow(Date.now());
+    document.addEventListener("visibilitychange", onVisible);
+    return () => { window.clearInterval(id); document.removeEventListener("visibilitychange", onVisible); };
+  }, [isActive, pausedLeft]);
 
   useEffect(() => {
-    if (!isActive || paused) return;
-    if (timeLeft <= 0) {
-      if (!buzzedRef.current) {
-        buzzedRef.current = true;
-        void cancelRestNotification();
-        void signalRestFinished(vibrate);
-        if (soundOn) beep();
-      }
-      const dismiss = setTimeout(onClose, 4000);
-      return () => clearTimeout(dismiss);
+    if (!isActive || !isDone || pausedLeft !== null) return;
+    if (!buzzedRef.current) {
+      buzzedRef.current = true;
+      void cancelRestNotification();
+      void signalRestFinished(vibrate);
+      if (soundOn) beep();
     }
-    const t = setInterval(() => setTimeLeft(s => s - 1), 1000);
-    return () => clearInterval(t);
-  }, [isActive, timeLeft, paused, soundOn, vibrate, onClose]);
+    const dismiss = window.setTimeout(onClose, 4000);
+    return () => window.clearTimeout(dismiss);
+  }, [isActive, isDone, pausedLeft, soundOn, vibrate, onClose]);
 
-  const addTime = (s: number) => {
-    setTimeLeft(t => {
-      const next = Math.max(0, t + s);
-      if (isActive && !paused) {
-        if (next > 0) void scheduleRestNotification(next);
-        else void cancelRestNotification();
-      }
-      return next;
-    });
+  // Android/desktop: laying the phone flat on the bench opens the glance view.
+  // iOS needs a permission prompt for orientation, so there it's the button only.
+  useEffect(() => {
+    if (!isActive) return;
+    const DOE = (window as any).DeviceOrientationEvent;
+    if (!DOE || typeof DOE.requestPermission === "function") return;
+    const handler = (e: DeviceOrientationEvent) => {
+      if (autoGlanceRef.current && e.beta !== null && Math.abs(e.beta) < 20) setGlance(true);
+    };
+    window.addEventListener("deviceorientation", handler, true);
+    return () => window.removeEventListener("deviceorientation", handler, true);
+  }, [isActive]);
+
+  const addTime = useCallback((s: number) => {
+    if (pausedLeft !== null) {
+      setPausedLeft(Math.max(0, pausedLeft + s));
+      return;
+    }
+    const next = Math.max(Date.now(), endAt + s * 1000);
+    setEndAt(next);
+    setTotal(t => Math.max(1, t + s));
+    setNow(Date.now());
+    const left = Math.ceil((next - Date.now()) / 1000);
+    if (left > 0) { buzzedRef.current = false; void scheduleRestNotification(left); }
+    else void cancelRestNotification();
+  }, [endAt, pausedLeft]);
+
+  const togglePause = () => {
+    if (pausedLeft === null) {
+      setPausedLeft(timeLeft);
+      void cancelRestNotification();
+    } else {
+      setEndAt(Date.now() + pausedLeft * 1000);
+      setNow(Date.now());
+      if (pausedLeft > 0) void scheduleRestNotification(pausedLeft);
+      setPausedLeft(null);
+    }
   };
 
-  const mins = Math.floor(Math.max(0, timeLeft) / 60);
-  const secs = Math.max(0, timeLeft) % 60;
-  const progress = Math.max(0, Math.min(1, timeLeft / time));
-  const isDone = timeLeft <= 0;
-
-  const R = 34;
-  const C = 2 * Math.PI * R;
+  const progress = Math.max(0, Math.min(1, 1 - timeLeft / Math.max(1, total)));
 
   return (
-    <AnimatePresence>
-      {isActive && (
-        <motion.div
-          initial={{ y: 160, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: 160, opacity: 0, scale: 0.96 }}
-          transition={{ type: "spring", stiffness: 380, damping: 32 }}
-          className="absolute bottom-28 safe-rest-timer left-4 right-4 z-50"
-        >
-          <div className={`relative overflow-hidden rounded-2xl border ${
-            isDone
-              ? "border-[var(--color-signal)]/35 bg-[var(--color-void-1)]"
-              : "border-white/[0.07] bg-[var(--color-void-1)]/96"
-          } backdrop-blur-xl`}
-            style={{ boxShadow: isDone
-              ? '0 20px 40px -12px rgba(0,0,0,0.6), 0 0 0 1px rgba(13,223,184,0.08)'
-              : '0 20px 40px -12px rgba(0,0,0,0.6)'
-            }}
+    <>
+      <AnimatePresence>
+        {isActive && (
+          <motion.div
+            role="timer"
+            aria-label={isDone ? "Repos terminé" : `Repos, ${fmt(timeLeft)} restantes`}
+            initial={{ y: 120, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 120, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 380, damping: 34 }}
+            className="fixed safe-rest-timer left-3 right-3 max-w-[calc(28rem-1.5rem)] mx-auto z-30"
           >
-            {/* Top glow */}
-            <div className={`absolute inset-0 pointer-events-none ${
-              isDone
-                ? "bg-gradient-to-b from-[var(--color-signal)]/8 to-transparent"
-                : "bg-gradient-to-b from-[var(--color-signal)]/4 to-transparent"
-            }`} />
-
-            <div className="relative z-10 p-4 flex items-center gap-4">
-              {/* Ring */}
-              <div className="relative w-[76px] h-[76px] shrink-0">
-                <svg viewBox="0 0 88 88" className="w-full h-full -rotate-90">
-                  <circle cx="44" cy="44" r={R} fill="none" stroke="rgba(100,150,255,0.08)" strokeWidth="5" />
-                  <motion.circle
-                    cx="44" cy="44" r={R} fill="none"
-                    stroke="var(--color-signal)"
-                    strokeWidth="5"
-                    strokeLinecap="round"
-                    strokeDasharray={C}
-                    animate={{ strokeDashoffset: C * (1 - progress) }}
-                    transition={{ duration: 0.7, ease: "linear" }}
-                    style={isDone ? { filter: 'drop-shadow(0 0 6px rgba(13,223,184,0.5))' } : {}}
-                  />
-                </svg>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className={`font-mono tnum font-bold leading-none ${isDone ? "text-[var(--color-signal)]" : "text-[#C0D0F0]"}`}
-                    style={{ fontSize: '16px' }}>
-                    {mins}:{secs.toString().padStart(2, "0")}
-                  </span>
-                </div>
+            <div className={`rounded-2xl border bg-surface shadow-2xl shadow-black/60 overflow-hidden ${isDone ? "border-go/60" : "border-line"}`}>
+              <div className="h-1 bg-raised">
+                <div className={`h-full transition-[width] duration-300 ${isDone ? "bg-go" : "bg-chalk"}`} style={{ width: `${progress * 100}%` }} />
               </div>
-
-              {/* Body */}
-              <div className="flex-1 min-w-0">
-                <div className="text-[10px] font-bold uppercase tracking-[0.18em] mb-2.5 text-slate-500">
-                  {isDone ? "Repos terminé" : "Récupération"}
+              <div className="p-3 pl-4 flex items-center gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-baseline gap-2">
+                    <span className={`type-num text-[44px] ${isDone ? "text-go" : "text-ink"}`}>{isDone ? "Go" : fmt(timeLeft)}</span>
+                    {pausedLeft !== null && <span className="text-sm text-pr font-semibold">En pause</span>}
+                  </div>
                 </div>
-
-                <div className="flex items-center gap-1.5">
-                  <button
-                    onClick={() => addTime(-15)}
-                    className="h-8 px-2.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.07] text-xs font-bold text-slate-300 flex items-center gap-1 active:scale-95 transition"
-                  >
-                    <Minus className="w-3 h-3" /> 15
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button onClick={() => addTime(-15)} className="h-11 px-2.5 rounded-xl bg-raised text-ink text-[15px] font-semibold tnum active:bg-line" aria-label="Retirer 15 secondes">−15</button>
+                  <button onClick={() => addTime(15)} className="h-11 px-2.5 rounded-xl bg-raised text-ink text-[15px] font-semibold tnum active:bg-line" aria-label="Ajouter 15 secondes">+15</button>
+                  <button onClick={togglePause} className="w-11 h-11 rounded-xl bg-raised text-ink flex items-center justify-center active:bg-line" aria-label={pausedLeft !== null ? "Reprendre" : "Pause"}>
+                    {pausedLeft !== null ? <Play className="w-5 h-5" /> : <Pause className="w-5 h-5" />}
                   </button>
-                  <button
-                    onClick={() => addTime(15)}
-                    className="h-8 px-2.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.07] text-xs font-bold text-slate-300 flex items-center gap-1 active:scale-95 transition"
-                  >
-                    <Plus className="w-3 h-3" /> 15
-                  </button>
-                  <button
-                    onClick={() => setPaused(p => !p)}
-                    className="h-8 w-8 rounded-lg bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.07] text-slate-300 flex items-center justify-center active:scale-95 transition"
-                    aria-label={paused ? "Reprendre" : "Pause"}
-                  >
-                    {paused ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />}
-                  </button>
-                  <button
-                    onClick={onClose}
-                    className="ml-auto h-8 w-8 rounded-lg bg-[var(--color-void-3)] hover:bg-[var(--color-void-4)] text-slate-500 flex items-center justify-center active:scale-95 transition"
-                    aria-label="Fermer"
-                  >
-                    <X className="w-3.5 h-3.5" />
+                  <button onClick={() => setGlance(true)} className="w-11 h-11 rounded-xl bg-raised text-ink flex items-center justify-center active:bg-line" aria-label="Plein écran">
+                    <Maximize2 className="w-5 h-5" />
                   </button>
                 </div>
               </div>
+              {nextLabel && <div className="px-4 -mt-1 pb-2.5 text-[15px] text-muted truncate">{nextLabel}</div>}
+              <button onClick={onClose} className="w-full h-11 border-t border-line text-[15px] font-semibold text-muted active:bg-raised">
+                {isDone ? "Fermer" : "Passer le repos"}
+              </button>
             </div>
-          </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Glance mode: phone on the bench, readable from two metres. Tap anywhere to close. */}
+      <AnimatePresence>
+        {isActive && glance && (
+          <motion.button
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => { autoGlanceRef.current = false; setGlance(false); }}
+            aria-label="Fermer le plein écran"
+            className="fixed inset-0 z-[80] bg-bg flex flex-col items-center justify-center px-6"
+          >
+            <span className={`type-num ${isDone ? "text-go" : "text-ink"}`} style={{ fontSize: "clamp(120px, 38vw, 240px)", fontStretch: "62%" }}>
+              {isDone ? "Go" : fmt(timeLeft)}
+            </span>
+            {nextLabel && <span className="mt-8 text-xl text-muted text-center max-w-[20ch]">{nextLabel}</span>}
+            <span className="absolute bottom-10 text-sm text-faint">Touche l'écran pour revenir</span>
+          </motion.button>
+        )}
+      </AnimatePresence>
+    </>
   );
 }

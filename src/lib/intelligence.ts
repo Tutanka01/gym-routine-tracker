@@ -54,24 +54,31 @@ export const getVolumeStatus = (sets: number, mg: string): VolumeStatus => {
 };
 
 export const volumeStatusMeta: Record<VolumeStatus, { label: string; color: string; bg: string; border: string }> = {
-  'below-mev': { label: 'Sous MEV', color: '#64748b', bg: 'rgba(100,116,139,0.1)', border: 'rgba(100,116,139,0.2)' },
-  'mev-mav':   { label: 'MEV → MAV', color: '#0DDFB8', bg: 'rgba(13,223,184,0.1)', border: 'rgba(13,223,184,0.25)' },
-  'mav-mrv':   { label: 'MAV → MRV', color: '#FFD740', bg: 'rgba(255,215,64,0.1)', border: 'rgba(255,215,64,0.25)' },
-  'above-mrv': { label: 'Sur MRV', color: '#FF6B35', bg: 'rgba(255,107,53,0.1)', border: 'rgba(255,107,53,0.25)' },
+  'below-mev': { label: 'Sous le minimum', color: '#a4a8ae', bg: 'rgba(164,168,174,0.1)', border: 'rgba(164,168,174,0.2)' },
+  'mev-mav':   { label: 'Productif', color: '#3dbe6e', bg: 'rgba(61,190,110,0.12)', border: 'rgba(61,190,110,0.3)' },
+  'mav-mrv':   { label: 'Haut volume', color: '#f5c431', bg: 'rgba(245,196,49,0.12)', border: 'rgba(245,196,49,0.3)' },
+  'above-mrv': { label: 'Trop de volume', color: '#ef5a4c', bg: 'rgba(239,90,76,0.12)', border: 'rgba(239,90,76,0.3)' },
 };
 
-// Count completed hard sets per muscle group from the current week's sessions
+// Count completed hard sets per muscle group for a Monday-to-Sunday week.
+// weekOffset 0 = current week, -1 = last week.
 export const weeklyMuscleGroupSets = (
   sessions: WorkoutSession[],
   exercises: Exercise[],
+  weekOffset = 0,
 ): Record<string, number> => {
   const now = new Date();
   const day = (now.getDay() + 6) % 7; // Monday = 0
   const monday = new Date(now);
   monday.setHours(0, 0, 0, 0);
-  monday.setDate(now.getDate() - day);
+  monday.setDate(now.getDate() - day + weekOffset * 7);
+  const nextMonday = new Date(monday);
+  nextMonday.setDate(monday.getDate() + 7);
 
-  const weekSessions = sessions.filter(s => new Date(s.date) >= monday);
+  const weekSessions = sessions.filter(s => {
+    const d = new Date(s.date);
+    return d >= monday && d < nextMonday;
+  });
   const result: Record<string, number> = {};
 
   for (const session of weekSessions) {
@@ -190,7 +197,7 @@ export const autoProgression = (
       return {
         action: 'deload',
         nextWeight: Math.round(Number(topSet.weight) * 0.9 / 2.5) * 2.5,
-        reason: '2 séances en baisse — deload de 10%',
+        reason: 'Deux séances en baisse : allège de 10 %',
         urgency: 'warning',
       };
     }
@@ -199,7 +206,7 @@ export const autoProgression = (
   if (detectPlateau(sessions, exId)) {
     return {
       action: 'plateau',
-      reason: '3 séances sans progression — changer la plage de reps ou swapper',
+      reason: 'Trois séances sans progrès : change la plage de reps ou l\'exercice',
       urgency: 'warning',
     };
   }
@@ -212,7 +219,7 @@ export const autoProgression = (
     return {
       action: 'increase-weight',
       nextWeight: Number(topSet.weight) + inc,
-      reason: `Performance solide — +${inc} kg la prochaine fois`,
+      reason: `Toutes les reps sont là : +${String(inc).replace('.', ',')} kg`,
       urgency: 'info',
     };
   }
@@ -254,7 +261,7 @@ export const getSessionTarget = (
       targetWeight: null,
       reps,
       action: 'learn',
-      reason: 'Premiere seance: trouve une charge propre dans la plage cible.',
+      reason: 'Première séance : trouve une charge propre dans la plage cible.',
       deltaKg: null,
       lastWeight: null,
       readinessAdjusted: false,
@@ -277,7 +284,7 @@ export const getSessionTarget = (
     reps,
     action: suggestion?.action ?? 'maintain',
     reason: readiness < 1
-      ? `${suggestion?.reason ?? 'Maintenir le poids actuel'}; garde 1 RIR de marge si besoin`
+      ? `${suggestion?.reason ?? 'Maintenir le poids actuel'}. Forme réduite : garde une rep de marge en plus.`
       : suggestion?.reason ?? 'Maintenir le poids actuel',
     deltaKg: formatKg(targetWeight - lastWeight),
     lastWeight,
@@ -317,7 +324,7 @@ export const getNextSetRepsHint = (
     return {
       placeholder: String(target),
       label: `${target} reps`,
-      note: 'RIR 0: reduis un peu',
+      note: 'Série précédente à l\'échec : vise un peu moins de reps',
       tone: 'down',
     };
   }
@@ -327,7 +334,7 @@ export const getNextSetRepsHint = (
     return {
       placeholder: String(target),
       label: `${target} reps`,
-      note: 'RIR 4+: pousse un peu',
+      note: 'Il restait de la marge : vise un peu plus de reps',
       tone: 'up',
     };
   }
@@ -344,7 +351,7 @@ export const rirConsistencyWarning = (
   if (prevReps === null || !sameWeight || prevReps <= 0) return null;
   const drop = prevReps - currentReps;
   if (drop >= 3 && declaredRir >= 2) {
-    return `RIR sous-estimé probable — chute de ${drop} reps vs dernière fois`;
+    return `${drop} reps de moins que la dernière fois à charge égale : tu étais sans doute plus proche de l'échec que déclaré.`;
   }
   return null;
 };

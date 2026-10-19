@@ -1,30 +1,12 @@
-import { CheckCircle2, Trophy, Zap } from "lucide-react";
+import { Trophy } from "lucide-react";
 import { motion } from "motion/react";
-import { Workout } from "../data";
-import { ExerciseLog, WorkoutSession } from "../lib/storage";
-import { computeStreak, fmtVol, sessionPRs, setVolume } from "../lib/stats";
-
-function StatCard({ label, value, unit }: { label: string; value: string; unit?: string }) {
-  return (
-    <div className="rounded-xl bg-[var(--color-void-2)] border border-white/[0.06] p-4 text-left">
-      <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-600 mb-1.5">{label}</div>
-      <div className="font-mono tnum font-bold text-2xl text-[#C0D0F0] leading-none">
-        {value}
-        {unit && <span className="text-xs text-slate-500 ml-1 font-sans">{unit}</span>}
-      </div>
-    </div>
-  );
-}
+import type { Workout } from "../data";
+import type { ExerciseLog, WorkoutSession } from "../lib/storage";
+import { fmtKg, fmtTonnage, sessionPRs, setVolume, workoutTitle } from "../lib/stats";
+import { btn } from "./ui";
 
 export function FinishSummary({
-  workout,
-  sessionLogs,
-  startedAt,
-  pastSessions,
-  completedSets,
-  liveVolume,
-  displayNameFor,
-  onFinish,
+  workout, sessionLogs, startedAt, pastSessions, completedSets, liveVolume, displayNameFor, onFinish, onBack,
 }: {
   workout: Workout;
   sessionLogs: Record<string, ExerciseLog>;
@@ -34,112 +16,83 @@ export function FinishSummary({
   liveVolume: number;
   displayNameFor: (exerciseId: string) => string;
   onFinish: () => void;
+  onBack: () => void;
 }) {
-  const durationSec = Math.max(1, Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000));
-  const prs = sessionPRs(sessionLogs, pastSessions);
+  const durationMin = Math.max(1, Math.round((Date.now() - new Date(startedAt).getTime()) / 60000));
+  const plannedSets = workout.exercises.reduce((a, e) => a + Math.max(e.sets, sessionLogs[e.id]?.sets.length ?? 0), 0);
+  const skipped = Math.max(0, plannedSets - completedSets);
+
+  // One line per exercise: keep the best PR type, weight beats volume.
+  const prs = Object.values(
+    sessionPRs(sessionLogs, pastSessions).reduce<Record<string, ReturnType<typeof sessionPRs>[number]>>((acc, pr) => {
+      if (!acc[pr.exerciseId] || pr.type === "weight") acc[pr.exerciseId] = pr;
+      return acc;
+    }, {}),
+  );
+
   const previousSame = [...pastSessions]
     .filter(s => s.workoutId === workout.id)
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
-  const previousVolume = previousSame?.totalVolume ?? (previousSame ? Object.values(previousSame.logs).flatMap(l => l.sets).reduce((a, s) => a + setVolume(s), 0) : 0);
+  const previousVolume = previousSame?.totalVolume
+    ?? (previousSame ? Object.values(previousSame.logs).flatMap(l => l.sets).reduce((a, s) => a + setVolume(s), 0) : 0);
   const volumeDeltaPct = previousVolume > 0 ? Math.round(((liveVolume - previousVolume) / previousVolume) * 100) : null;
-  const durationDeltaMin = previousSame?.durationSec ? Math.round((durationSec - previousSame.durationSec) / 60) : null;
-  const streak = computeStreak([
-    ...pastSessions,
-    {
-      v: 1,
-      id: "current",
-      date: new Date().toISOString(),
-      workoutId: workout.id,
-      workoutName: workout.name,
-      logs: sessionLogs,
-      durationSec,
-      totalVolume: liveVolume,
-    },
-  ]);
 
   return (
     <motion.div
       key="finish"
-      initial={{ opacity: 0, scale: 0.97 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.28 }}
-      className="flex flex-col items-center text-center pb-12 pt-8"
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25 }}
+      className="pt-6 pb-10"
     >
-      <motion.div
-        initial={{ scale: 0.6, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ delay: 0.1, type: "spring", stiffness: 240, damping: 18 }}
-        className="w-24 h-24 bg-signal-soft rounded-full flex items-center justify-center mb-7"
-        style={{ boxShadow: "0 0 40px rgba(13,223,184,0.2)" }}
-      >
-        <CheckCircle2 className="w-11 h-11 text-[var(--color-signal)]" strokeWidth={1.6} />
-      </motion.div>
+      <p className="text-[15px] text-muted">{workoutTitle(workout.name)}</p>
+      <h1 className="type-display text-[60px] text-ink mb-6">Séance terminée</h1>
 
-      <h2 className="font-display font-black text-[#C0D0F0] mb-1 uppercase" style={{ fontSize: "64px", lineHeight: 0.85 }}>
-        BRAVO
-      </h2>
-      <p className="text-slate-500 text-sm mb-8">Seance prete a enregistrer.</p>
+      <dl className="grid grid-cols-3 rounded-2xl bg-surface border border-line divide-x divide-line mb-3">
+        <div className="p-3.5">
+          <dt className="text-sm text-muted">Séries</dt>
+          <dd className="type-num text-[30px] text-ink mt-1">{completedSets}</dd>
+        </div>
+        <div className="p-3.5">
+          <dt className="text-sm text-muted">Volume</dt>
+          <dd className="type-num text-[30px] text-ink mt-1">{fmtTonnage(liveVolume)}</dd>
+        </div>
+        <div className="p-3.5">
+          <dt className="text-sm text-muted">Durée</dt>
+          <dd className="type-num text-[30px] text-ink mt-1">{durationMin} min</dd>
+        </div>
+      </dl>
 
-      <div className="grid grid-cols-3 gap-3 w-full px-2 max-w-sm mb-5">
-        <StatCard label="Sets" value={`${completedSets}`} />
-        <StatCard label="Volume" value={fmtVol(liveVolume)} unit="kg" />
-        <StatCard label="Duree" value={`${Math.max(1, Math.floor(durationSec / 60))}'`} />
-      </div>
+      {volumeDeltaPct !== null && (
+        <p className="text-[15px] text-muted mb-5">
+          Volume <span className={`font-semibold tnum ${volumeDeltaPct >= 0 ? "text-go" : "text-warn"}`}>{volumeDeltaPct >= 0 ? "+" : "−"}{Math.abs(volumeDeltaPct)} %</span> par rapport à la dernière {workoutTitle(workout.name)}.
+        </p>
+      )}
 
       {prs.length > 0 && (
-        <div className="w-full text-left rounded-xl bg-acid-soft border border-[var(--color-acid)]/20 p-4 mb-4">
-          <div className="flex items-center gap-2 text-[var(--color-acid)] mb-3">
-            <Trophy className="w-4 h-4" />
-            <span className="text-[10px] font-bold uppercase tracking-[0.14em]">PR battus</span>
-          </div>
-          <div className="space-y-2">
-            {prs.slice(0, 6).map((pr, idx) => (
-              <div key={`${pr.exerciseId}-${pr.setIndex}-${pr.type}-${idx}`} className="text-xs text-slate-300">
-                <span className="font-semibold text-[#C0D0F0]">{displayNameFor(pr.exerciseId)}</span>
-                <span className="text-slate-500"> · </span>
-                <span className="font-mono tnum">{pr.weight} kg × {pr.reps}</span>
-                <span className="text-[var(--color-acid)] font-bold"> · {pr.type === "volume" ? "Volume PR" : "Poids PR"}</span>
-              </div>
+        <section className="rounded-2xl bg-pr/10 border border-pr/40 p-4 mb-5">
+          <h2 className="flex items-center gap-2 text-[17px] font-semibold text-ink mb-3">
+            <Trophy className="w-5 h-5 text-pr" aria-hidden /> {prs.length} record{prs.length > 1 ? "s" : ""} battu{prs.length > 1 ? "s" : ""}
+          </h2>
+          <ul className="space-y-2">
+            {prs.map(pr => (
+              <li key={pr.exerciseId} className="flex items-baseline justify-between gap-3">
+                <span className="text-[15px] text-ink truncate">{displayNameFor(pr.exerciseId)}</span>
+                <span className="type-num text-xl text-ink shrink-0">{fmtKg(pr.weight)} × {pr.reps}</span>
+              </li>
             ))}
-          </div>
-        </div>
+          </ul>
+        </section>
       )}
 
-      {previousSame && (
-        <div className="w-full text-left rounded-xl bg-[var(--color-void-2)] border border-white/[0.06] p-4 mb-4">
-          <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-600 mb-3">Vs derniere meme seance</div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <div className="text-xs text-slate-500 mb-1">Volume</div>
-              <div className={`font-mono tnum font-bold ${volumeDeltaPct !== null && volumeDeltaPct >= 0 ? "text-[var(--color-signal)]" : "text-orange-300"}`}>
-                {fmtVol(liveVolume)} kg {volumeDeltaPct !== null && `(${volumeDeltaPct >= 0 ? "+" : ""}${volumeDeltaPct}%)`}
-              </div>
-            </div>
-            <div>
-              <div className="text-xs text-slate-500 mb-1">Duree</div>
-              <div className={`font-mono tnum font-bold ${durationDeltaMin !== null && durationDeltaMin <= 0 ? "text-[var(--color-signal)]" : "text-orange-300"}`}>
-                {Math.max(1, Math.floor(durationSec / 60))} min {durationDeltaMin !== null && `(${durationDeltaMin >= 0 ? "+" : ""}${durationDeltaMin} min)`}
-              </div>
-            </div>
-          </div>
-        </div>
+      {skipped > 0 && (
+        <p className="text-[15px] text-muted rounded-2xl border border-line p-4 mb-5">
+          {skipped} série{skipped > 1 ? "s" : ""} non validée{skipped > 1 ? "s" : ""}. Elles ne seront pas comptées.
+        </p>
       )}
 
-      {streak > 1 && (
-        <div className="w-full rounded-xl bg-signal-soft border border-signal-soft px-4 py-3 text-sm font-semibold text-[var(--color-signal)] mb-5">
-          {streak}e seance d'affilee.
-        </div>
-      )}
-
-      <button
-        onClick={onFinish}
-        className="w-full text-black font-bold py-4 rounded-xl text-base active:scale-[0.98] transition-transform flex items-center justify-center gap-2"
-        style={{ background: "var(--color-signal)", boxShadow: "0 6px 24px rgba(13,223,184,0.3)" }}
-      >
-        <Zap className="w-5 h-5" strokeWidth={2.5} />
-        Enregistrer la seance
-      </button>
+      <button onClick={onFinish} className={`${btn.primary} w-full`}>Enregistrer la séance</button>
+      <button onClick={onBack} className={`${btn.quiet} w-full mt-2`}>Revenir aux exercices</button>
     </motion.div>
   );
 }
-

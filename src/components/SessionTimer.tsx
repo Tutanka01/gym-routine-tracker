@@ -14,19 +14,15 @@ export function SessionTimer({ startedAt }: { startedAt: string }) {
   );
 
   useEffect(() => {
-    const tick = () => {
-      setElapsed(Math.max(0, Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000)));
-    };
+    const tick = () => setElapsed(Math.max(0, Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000)));
     tick();
     const id = window.setInterval(tick, 1000);
     return () => window.clearInterval(id);
   }, [startedAt]);
 
   return (
-    <div className="flex items-center justify-end gap-1.5 min-w-16 font-mono tnum text-xs font-bold text-slate-400">
-      <span>{formatElapsed(elapsed)}</span>
-      <span className="w-2 h-2 rounded-full bg-[var(--color-signal)] animate-pulse shadow-[0_0_12px_rgba(13,223,184,0.55)]" />
-    </div>
+    <span className="type-num text-lg text-muted" aria-label={`Durée de la séance ${formatElapsed(elapsed)}`}>
+      {formatElapsed(elapsed)}
+    </span>
   );
 }
-

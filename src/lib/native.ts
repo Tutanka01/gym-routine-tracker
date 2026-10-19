@@ -101,8 +101,8 @@ export async function scheduleRestNotification(seconds: number) {
     await LocalNotifications.schedule({
       notifications: [{
         id: REST_NOTIFICATION_ID,
-        title: 'Repos termine',
-        body: 'Tu peux reprendre ta seance.',
+        title: 'Repos terminé',
+        body: 'Série suivante quand tu es prêt.',
         schedule: {
           at: new Date(Date.now() + seconds * 1000),
           allowWhileIdle: true,

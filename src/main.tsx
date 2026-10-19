@@ -1,6 +1,8 @@
 import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
+// Self-hosted (bundled) so the app keeps making zero external requests.
+import '@fontsource-variable/archivo/wdth.css';
 import './index.css';
 import { hydrateNativeStorage, isNativeApp } from './lib/native';
 

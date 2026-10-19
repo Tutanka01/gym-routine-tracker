@@ -1,18 +1,19 @@
 import { useRef, useState, type ReactNode } from "react";
-import { ChevronLeft, Download, Upload, Volume2, VolumeX, Vibrate, Trash2, Database, Shield } from "lucide-react";
-import { storage, AppSettings } from "../lib/storage";
-import { ProgramBuilder } from "./ProgramBuilder";
+import { Download, Upload, Volume2, Vibrate, Trash2, ShieldCheck } from "lucide-react";
+import { storage, type AppSettings } from "../lib/storage";
 import { shareBackupFile } from "../lib/native";
+import { ConfirmSheet, PageTitle, SectionLabel, Toast } from "./ui";
 
-interface Props { onClose: () => void; onProgramChanged?: () => void; }
+const fmtRest = (s: number) => (s >= 60 ? `${Math.floor(s / 60)} min${s % 60 ? ` ${s % 60}` : ""}` : `${s} s`);
 
-export function Settings({ onClose, onProgramChanged }: Props) {
+export function Settings({ onDataChanged }: { onDataChanged?: () => void }) {
   const [settings, setSettings] = useState<AppSettings>(() => storage.getSettings());
-  const [stats, setStats] = useState(() => ({
+  const [counts, setCounts] = useState(() => ({
     sessions: storage.getSessions().length,
     checkins: storage.getCheckins().length,
   }));
-  const [feedback, setFeedback] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+  const [confirmWipe, setConfirmWipe] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const update = (patch: Partial<AppSettings>) => {
@@ -22,132 +23,75 @@ export function Settings({ onClose, onProgramChanged }: Props) {
   };
 
   const flash = (msg: string) => {
-    setFeedback(msg);
-    setTimeout(() => setFeedback(null), 2200);
+    setToast(msg);
+    window.setTimeout(() => setToast(null), 2400);
   };
+
+  const refreshCounts = () => setCounts({ sessions: storage.getSessions().length, checkins: storage.getCheckins().length });
 
   const exportData = async () => {
     const payload = storage.exportAll();
     const data = JSON.stringify(payload, null, 2);
-    const stamp = new Date().toISOString().slice(0, 10);
-    const filename = `routine-backup-${stamp}.json`;
+    const filename = `routine-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    const message = `Sauvegarde exportée (${payload.sessions.length} séances)`;
 
-    const shared = await shareBackupFile(filename, data);
-    if (shared) {
-      flash(`Sauvegarde exportée (${payload.sessions.length} séances)`);
-      return;
-    }
+    if (await shareBackupFile(filename, data)) { flash(message); return; }
 
-    const blob = new Blob([data], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
+    const url = URL.createObjectURL(new Blob([data], { type: "application/json" }));
     const a = document.createElement("a");
     a.href = url; a.download = filename;
     document.body.appendChild(a); a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    flash(`Sauvegarde exportée (${payload.sessions.length} séances)`);
+    flash(message);
   };
 
-  const onImportFile = async (file: File, mode: 'replace' | 'merge') => {
+  const onImportFile = async (file: File) => {
     try {
-      const text = await file.text();
-      const parsed = JSON.parse(text);
-      storage.importAll(parsed, mode);
-      setStats({
-        sessions: storage.getSessions().length,
-        checkins: storage.getCheckins().length,
-      });
-      flash(`Import réussi (${mode === 'merge' ? 'fusion' : 'remplacement'})`);
+      storage.importAll(JSON.parse(await file.text()), "merge");
+      refreshCounts();
+      setSettings(storage.getSettings());
+      onDataChanged?.();
+      flash("Sauvegarde importée et fusionnée");
     } catch (e: any) {
-      flash(`Erreur : ${e?.message || "fichier invalide"}`);
+      flash(`Import impossible : ${e?.message || "fichier invalide"}`);
     }
   };
 
-  const wipe = () => {
-    if (!confirm("Effacer TOUTES les données locales ? Cette action est irréversible.")) return;
-    storage.wipeAll();
-    setStats({ sessions: 0, checkins: 0 });
-    setSettings(storage.getSettings());
-    flash("Toutes les données ont été effacées.");
-  };
-
   return (
-    <div className="flex flex-col min-h-screen safe-shell bg-[var(--color-void-0)] text-[#C0D0F0] max-w-md mx-auto">
-      <div className="sticky top-0 z-10 safe-header bg-[var(--color-void-0)]/85 backdrop-blur-xl border-b border-white/[0.05]">
-        <div className="flex items-center p-4">
-          <button
-            onClick={onClose}
-            aria-label="Retour"
-            className="relative z-10 p-2 -ml-2 text-slate-400 active:text-white shrink-0"
-          >
-            <ChevronLeft className="w-7 h-7" />
-          </button>
-          <h1 className="flex-1 text-center text-[10px] font-bold tracking-[0.3em] text-slate-500 uppercase pointer-events-none">Réglages</h1>
-          <div className="w-11 shrink-0" />
-        </div>
-      </div>
+    <div className="tab-page">
+      <PageTitle>Réglages</PageTitle>
 
-      <div className="flex-1 px-4 py-5 space-y-6 pb-12 safe-scroll">
-        {/* Stats summary */}
-        <div className="rounded-2xl bg-[var(--color-void-1)] border border-white/[0.05] p-5">
-          <div className="flex items-center gap-2 text-[10px] tracking-[0.25em] uppercase font-bold text-slate-500 mb-4">
-            <Database className="w-3.5 h-3.5" /> Données locales
+      <div className="space-y-8">
+        <section>
+          <SectionLabel aside={fmtRest(settings.defaultRest)}>Repos par défaut</SectionLabel>
+          <div className="rounded-2xl bg-surface border border-line p-4">
+            <input
+              type="range" min={30} max={300} step={15}
+              value={settings.defaultRest}
+              onChange={e => update({ defaultRest: Number(e.target.value) })}
+              aria-label="Durée de repos par défaut"
+              aria-valuetext={fmtRest(settings.defaultRest)}
+              className="w-full h-8"
+            />
+            <p className="text-sm text-faint mt-1">Utilisé quand un exercice n'a pas de repos défini dans le programme.</p>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <Stat label="Séances" value={stats.sessions} />
-            <Stat label="Check-ins" value={stats.checkins} />
+        </section>
+
+        <section>
+          <SectionLabel>Fin du repos</SectionLabel>
+          <div className="rounded-2xl bg-surface border border-line divide-y divide-line">
+            <Toggle icon={<Volume2 className="w-5 h-5" />} label="Son" active={settings.soundOn} onChange={v => update({ soundOn: v })} />
+            <Toggle icon={<Vibrate className="w-5 h-5" />} label="Vibration" active={settings.vibrate} onChange={v => update({ vibrate: v })} />
           </div>
-        </div>
+        </section>
 
-        {/* Default rest */}
-        <Section title="Repos par défaut">
-          <div className="p-4 rounded-xl bg-[var(--color-void-1)] border border-white/[0.05]">
-            <div className="flex items-center gap-3 mb-3">
-              <input
-                type="range" min={30} max={300} step={15}
-                value={settings.defaultRest}
-                onChange={e => update({ defaultRest: Number(e.target.value) })}
-                className="flex-1 accent-[#0DDFB8]"
-              />
-              <div className="w-14 text-right font-mono tnum font-bold text-base text-[#C0D0F0]">{settings.defaultRest}s</div>
-            </div>
-            <p className="text-xs text-slate-600">Utilisé pour les exercices sans repos défini.</p>
+        <section>
+          <SectionLabel aside={`${counts.sessions} séances, ${counts.checkins} check-ins`}>Sauvegarde</SectionLabel>
+          <div className="rounded-2xl bg-surface border border-line divide-y divide-line">
+            <Row icon={<Download className="w-5 h-5" />} title="Exporter mes données" sub="Fichier JSON avec séances, check-ins et programme" onClick={exportData} />
+            <Row icon={<Upload className="w-5 h-5" />} title="Importer une sauvegarde" sub="Fusionne avec les données actuelles" onClick={() => fileRef.current?.click()} />
           </div>
-        </Section>
-
-        {/* Sound + vibrate */}
-        <Section title="Notifications">
-          <Toggle
-            icon={settings.soundOn ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
-            label="Son de fin de repos"
-            active={settings.soundOn}
-            onChange={v => update({ soundOn: v })}
-          />
-          <Toggle
-            icon={<Vibrate className="w-4 h-4" />}
-            label="Vibration"
-            active={settings.vibrate}
-            onChange={v => update({ vibrate: v })}
-          />
-        </Section>
-
-        <Section title="Programme">
-          <ProgramBuilder onChanged={onProgramChanged} />
-        </Section>
-
-        {/* Backup */}
-        <Section title="Sauvegarde">
-          <button
-            onClick={exportData}
-            className="w-full flex items-center gap-3 p-4 rounded-xl bg-white text-black font-bold active:scale-[0.99] transition"
-          >
-            <Download className="w-5 h-5" />
-            <div className="text-left flex-1">
-              <div className="text-sm">Exporter en JSON</div>
-              <div className="text-[11px] font-normal text-black/60">Télécharge toutes les données.</div>
-            </div>
-          </button>
-
           <input
             ref={fileRef}
             type="file"
@@ -155,87 +99,67 @@ export function Settings({ onClose, onProgramChanged }: Props) {
             className="hidden"
             onChange={e => {
               const f = e.target.files?.[0];
-              if (f) onImportFile(f, 'merge');
-              e.target.value = '';
+              if (f) void onImportFile(f);
+              e.target.value = "";
             }}
           />
-          <button
-            onClick={() => fileRef.current?.click()}
-            className="w-full flex items-center gap-3 p-4 rounded-xl bg-[var(--color-void-2)] border border-white/[0.08] active:scale-[0.99] transition mt-2"
-          >
-            <Upload className="w-5 h-5 text-[var(--color-signal)]" />
-            <div className="text-left flex-1">
-              <div className="text-sm font-bold">Importer un JSON</div>
-              <div className="text-[11px] text-slate-500">Fusion avec les données existantes.</div>
-            </div>
-          </button>
-
-          <p className="text-[11px] text-slate-600 mt-3 flex items-start gap-2">
-            <Shield className="w-3 h-3 mt-0.5 text-slate-700 shrink-0" />
-            Tes données restent stockées sur cet appareil. L'export te sert de filet en cas de changement de téléphone ou de cache navigateur effacé.
+          <p className="flex items-start gap-2 text-sm text-faint mt-3 px-0.5">
+            <ShieldCheck className="w-4 h-4 mt-0.5 shrink-0" aria-hidden />
+            Tout reste sur cet appareil. Exporte de temps en temps pour ne rien perdre en changeant de téléphone.
           </p>
-        </Section>
+        </section>
 
-        {/* Danger zone */}
-        <Section title="Zone sensible" tone="danger">
-          <button
-            onClick={wipe}
-            className="w-full flex items-center gap-3 p-4 rounded-xl border border-red-500/20 bg-red-500/5 text-red-400 active:scale-[0.99] transition"
-          >
-            <Trash2 className="w-5 h-5" />
-            <div className="text-left flex-1">
-              <div className="text-sm font-bold">Tout effacer</div>
-              <div className="text-[11px] font-normal text-red-300/60">Séances, check-ins, réglages.</div>
-            </div>
-          </button>
-        </Section>
+        <section>
+          <div className="rounded-2xl bg-surface border border-line">
+            <Row icon={<Trash2 className="w-5 h-5" />} title="Tout effacer" sub="Séances, check-ins, réglages et programme" tone="danger" onClick={() => setConfirmWipe(true)} />
+          </div>
+        </section>
       </div>
 
-      {feedback && (
-        <div className="fixed bottom-6 safe-toast left-4 right-4 max-w-md mx-auto z-30">
-          <div className="text-black font-bold text-sm px-4 py-3 rounded-xl shadow-lg text-center"
-            style={{ background: 'var(--color-signal)', boxShadow: '0 8px 24px rgba(13,223,184,0.3)' }}>
-            {feedback}
-          </div>
-        </div>
-      )}
+      <ConfirmSheet
+        open={confirmWipe}
+        title="Effacer toutes les données ?"
+        body="Séances, check-ins, réglages et programme personnalisé seront supprimés de cet appareil. Exporte d'abord si tu veux les garder."
+        confirmLabel="Tout effacer"
+        onConfirm={() => {
+          storage.wipeAll();
+          refreshCounts();
+          setSettings(storage.getSettings());
+          onDataChanged?.();
+          flash("Toutes les données ont été effacées");
+        }}
+        onClose={() => setConfirmWipe(false)}
+      />
+      <Toast message={toast} />
     </div>
   );
 }
 
-function Section({ title, tone, children }: { title: string; tone?: "danger"; children: ReactNode }) {
+function Row({ icon, title, sub, onClick, tone }: { icon: ReactNode; title: string; sub: string; onClick: () => void; tone?: "danger" }) {
   return (
-    <div>
-      <div className={`text-[10px] tracking-[0.25em] uppercase font-bold mb-3 px-1 ${tone === "danger" ? "text-red-400" : "text-slate-500"}`}>{title}</div>
-      <div className="space-y-2">{children}</div>
-    </div>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: number }) {
-  return (
-    <div>
-      <div className="text-[10px] uppercase tracking-[0.18em] text-slate-600 mb-1">{label}</div>
-      <div className="font-display font-black tnum text-[#C0D0F0]" style={{ fontSize: '40px', lineHeight: 1 }}>{value}</div>
-    </div>
+    <button onClick={onClick} className="w-full flex items-center gap-3 px-4 py-3.5 text-left active:bg-raised transition">
+      <span className={tone === "danger" ? "text-warn" : "text-muted"}>{icon}</span>
+      <span className="flex-1 min-w-0">
+        <span className={`block text-[16px] font-semibold ${tone === "danger" ? "text-warn" : "text-ink"}`}>{title}</span>
+        <span className="block text-sm text-faint">{sub}</span>
+      </span>
+    </button>
   );
 }
 
 function Toggle({ icon, label, active, onChange }: { icon: ReactNode; label: string; active: boolean; onChange: (v: boolean) => void }) {
   return (
     <button
+      role="switch"
+      aria-checked={active}
       onClick={() => onChange(!active)}
-      className="w-full flex items-center gap-3 p-3.5 rounded-xl bg-[var(--color-void-1)] border border-white/[0.05] active:scale-[0.99] transition"
+      className="w-full flex items-center gap-3 px-4 h-14 text-left"
     >
-      <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${
-        active ? "bg-[var(--color-signal)]/15 text-[var(--color-signal)]" : "bg-white/[0.05] text-slate-500"
-      }`}>
-        {icon}
-      </div>
-      <div className="text-sm font-bold flex-1 text-left text-[#C0D0F0]">{label}</div>
-      <div className={`w-11 h-6 rounded-full p-0.5 transition-colors ${active ? "bg-[var(--color-signal)]" : "bg-white/[0.1]"}`}>
-        <div className={`w-5 h-5 rounded-full bg-white transition-transform shadow-sm ${active ? "translate-x-5" : "translate-x-0"}`} />
-      </div>
+      <span className="text-muted">{icon}</span>
+      <span className="flex-1 text-[16px] font-semibold text-ink">{label}</span>
+      <span className={`w-12 h-7 rounded-full p-0.5 transition-colors ${active ? "bg-go" : "bg-line"}`}>
+        <span className={`block w-6 h-6 rounded-full bg-chalk transition-transform ${active ? "translate-x-5" : ""}`} />
+      </span>
     </button>
   );
 }
