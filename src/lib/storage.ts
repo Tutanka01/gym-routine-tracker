@@ -14,6 +14,8 @@ import { mirrorNativeStorageRemove, mirrorNativeStorageWrite } from './native';
 import { STORAGE_KEYS as KEYS } from './storageKeys';
 
 export const SCHEMA_VERSION = 1;
+/** Bump when the built-in program changes: stored programs from an older revision are replaced once. */
+export const PROGRAM_REVISION = 2;
 
 export type SetType = 'normal' | 'drop' | 'cluster' | 'superset';
 
@@ -76,6 +78,7 @@ export type AppSettings = {
 
 export type ProgramData = {
   v: number;
+  revision?: number;
   workouts: Record<string, Workout>;
   weeklySchedule: WeekDay[];
   library: Exercise[];
@@ -91,6 +94,7 @@ const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 
 export const defaultProgram = (): ProgramData => ({
   v: SCHEMA_VERSION,
+  revision: PROGRAM_REVISION,
   workouts: clone(defaultWorkouts),
   weeklySchedule: clone(defaultWeeklySchedule),
   library: trackedExercises(defaultWorkouts).map(ex => clone(ex)),
@@ -109,10 +113,21 @@ const sanitizeProgram = (payload: Partial<ProgramData> | null | undefined): Prog
 
   return {
     v: SCHEMA_VERSION,
+    revision: PROGRAM_REVISION,
     workouts,
     weeklySchedule,
     library,
   };
+};
+
+// Swap an outdated stored program for the current built-in one, keeping exercises the user created.
+const migrateProgram = (stored: Partial<ProgramData>): ProgramData => {
+  const next = defaultProgram();
+  const known = new Set(next.library.map(ex => ex.trackingId ?? ex.id));
+  const custom = (Array.isArray(stored.library) ? stored.library : [])
+    .filter(ex => ex.id.startsWith('custom-') && !known.has(ex.trackingId ?? ex.id));
+  next.library.push(...custom);
+  return next;
 };
 
 function read<T>(key: string, fallback: T): T {
@@ -202,7 +217,19 @@ export const storage = {
   saveSettings: (s: AppSettings) => write(KEYS.settings, s),
 
   // ---- Editable training program ----
-  getProgram: (): ProgramData => sanitizeProgram(read<Partial<ProgramData> | null>(KEYS.program, null)),
+  getProgram: (): ProgramData => {
+    const stored = read<Partial<ProgramData> | null>(KEYS.program, null);
+    if (stored && typeof stored === 'object' && (stored.revision ?? 1) < PROGRAM_REVISION) {
+      const migrated = migrateProgram(stored);
+      write(KEYS.program, migrated);
+      // An in-progress session from the old program no longer matches its exercises.
+      const active = storage.getActiveSession();
+      const workout = active ? migrated.workouts[active.workoutId] : null;
+      if (active && (!workout || workout.exercises.some(ex => !active.logs[ex.id]))) storage.clearActiveSession();
+      return migrated;
+    }
+    return sanitizeProgram(stored);
+  },
 
   saveProgram: (p: Omit<ProgramData, 'v'> | ProgramData) => {
     write<ProgramData>(KEYS.program, sanitizeProgram({ ...p, v: SCHEMA_VERSION }));

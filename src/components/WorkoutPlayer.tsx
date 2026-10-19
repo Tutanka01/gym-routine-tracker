@@ -18,6 +18,7 @@ import { FinishSummary } from "./FinishSummary";
 import { ReadinessGate } from "./ReadinessGate";
 import { ExerciseCue } from "./ExerciseCue";
 import { PlateCalculator } from "./PlateCalculator";
+import { ExerciseDemoCard, ExerciseTechniqueSheet } from "./ExerciseDemo";
 import { Sheet, btn } from "./ui";
 import {
   autoProgression,
@@ -105,6 +106,7 @@ export function WorkoutPlayer({ workout, program, onClose, resumeFromActive }: W
   const [optionsTarget, setOptionsTarget] = useState<{ exerciseId: string; setIndex: number } | null>(null);
   const [showSwapSheet, setShowSwapSheet] = useState(false);
   const [showPlates, setShowPlates] = useState(false);
+  const [showTechnique, setShowTechnique] = useState(false);
   const [showReadinessGate, setShowReadinessGate] = useState(!resumeFromActive);
   const [readiness, setReadiness] = useState<{ sleep: number; energy: number } | null>(null);
   const [plateauExId, setPlateauExId] = useState<string | null>(null);
@@ -741,6 +743,8 @@ export function WorkoutPlayer({ workout, program, onClose, resumeFromActive }: W
                 )}
               </AnimatePresence>
 
+              <ExerciseDemoCard name={displayNameFor(currentExercise.id)} onOpen={() => setShowTechnique(true)} />
+
               {currentExercise.notes && (
                 <p className="mt-4 rounded-2xl border border-line p-4 text-[15px] text-muted">{currentExercise.notes}</p>
               )}
@@ -810,6 +814,12 @@ export function WorkoutPlayer({ workout, program, onClose, resumeFromActive }: W
         selectedName={currentExercise ? displayNameFor(currentExercise.id) : ""}
         onClose={() => setShowSwapSheet(false)}
         onSelect={exercise => currentExercise && updatePerformedExercise(currentExercise.id, exercise)} />
+
+      <ExerciseTechniqueSheet
+        name={currentExercise ? displayNameFor(currentExercise.id) : null}
+        open={showTechnique}
+        onClose={() => setShowTechnique(false)}
+      />
 
       <Sheet open={showPlates} onClose={() => setShowPlates(false)} label="Charger la barre" tall>
         <h2 className="text-xl font-bold text-ink mb-4">Charger la barre</h2>

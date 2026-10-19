@@ -8,6 +8,7 @@ import {
 } from "../lib/stats";
 import { weeklyMuscleGroupSets, getVolumeStatus, VOLUME_LANDMARKS, getSessionTarget } from "../lib/intelligence";
 import { btn, ConfirmSheet, SectionLabel } from "./ui";
+import { ExerciseTechniqueSheet, ExerciseThumb } from "./ExerciseDemo";
 import type { ProgressTab } from "./Progress";
 
 interface HomeProps {
@@ -210,6 +211,7 @@ function TodayWorkout({
   targets: ReturnType<typeof getSessionTarget>[];
   onStart: () => void;
 }) {
+  const [technique, setTechnique] = useState<string | null>(null);
   return (
     <section className="mb-8" aria-label="Séance du jour">
       <h1 className="type-display text-[64px] text-ink mt-1 mb-3">{workoutTitle(workout.name)}</h1>
@@ -222,30 +224,40 @@ function TodayWorkout({
         {trainedToday ? "Refaire la séance" : "Commencer la séance"}
       </button>
 
-      <ol className="rounded-2xl bg-surface border border-line divide-y divide-line">
+      <ol className="rounded-2xl bg-surface border border-line divide-y divide-line overflow-hidden">
         {workout.exercises.map((ex, i) => {
           const t = targets[i];
           const up = t?.deltaKg !== null && (t?.deltaKg ?? 0) > 0;
           return (
-            <li key={ex.id} className="flex items-center gap-3 px-4 py-3">
-              <div className="flex-1 min-w-0">
-                <div className="text-[15px] font-medium text-ink truncate">{ex.name}</div>
-                <div className="text-sm text-faint tnum">{ex.sets} × {repsLabel(ex.reps)}</div>
-              </div>
-              <div className="text-right shrink-0">
-                {t?.targetWeight ? (
-                  <>
-                    <div className="type-num text-[22px] text-ink">{fmtKg(t.targetWeight)}<span className="text-sm text-muted ml-0.5">kg</span></div>
-                    {up && <div className="text-xs font-semibold text-go tnum">+{fmtKg(t.deltaKg!)} kg</div>}
-                  </>
-                ) : (
-                  <span className="text-sm text-faint">À calibrer</span>
-                )}
-              </div>
+            <li key={ex.id}>
+              <button
+                type="button"
+                onClick={() => setTechnique(ex.name)}
+                className="w-full flex items-center gap-3 pl-2 pr-4 py-2 text-left active:bg-raised transition"
+              >
+                <ExerciseThumb name={ex.name} className="w-[72px] h-12 shrink-0 rounded-lg" />
+                <div className="flex-1 min-w-0">
+                  <div className="text-[15px] font-medium text-ink truncate">{ex.name}</div>
+                  <div className="text-sm text-faint tnum">{ex.sets} × {repsLabel(ex.reps)}</div>
+                </div>
+                <div className="text-right shrink-0">
+                  {t?.targetWeight ? (
+                    <>
+                      <div className="type-num text-[22px] text-ink">{fmtKg(t.targetWeight)}<span className="text-sm text-muted ml-0.5">kg</span></div>
+                      {up && <div className="text-xs font-semibold text-go tnum">+{fmtKg(t.deltaKg!)} kg</div>}
+                    </>
+                  ) : (
+                    <span className="text-sm text-faint">À calibrer</span>
+                  )}
+                </div>
+              </button>
             </li>
           );
         })}
       </ol>
+      <p className="text-sm text-faint mt-2 px-0.5">Touche un exercice pour voir la technique.</p>
+
+      <ExerciseTechniqueSheet name={technique} open={!!technique} onClose={() => setTechnique(null)} />
     </section>
   );
 }
